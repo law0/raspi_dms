@@ -13,9 +13,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
   apt-transport-https \
   ca-certificates \
   qemu-user-static \ 
-  python3.7-dev python3-numpy python-dev python-numpy \
+  python3.6-dev python3-numpy python-dev python-numpy \
   libpython-dev:armhf \
-  libpython3.7-dev:armhf \
+  libpython3.6-dev:armhf \
   libgtk-3-dev:armhf libcanberra-gtk3-dev:armhf \
   libtiff-dev:armhf zlib1g-dev:armhf \
   libjpeg-dev:armhf libpng-dev:armhf \
@@ -27,3 +27,5 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
      
 
 ENV PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig
+
+RUN mkdir -p /opt && chmod -R 777 /opt
