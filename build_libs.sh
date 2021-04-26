@@ -58,6 +58,7 @@ echo >> ${PKGCONFIG}/opencv.pc
 cat ${SRC}/opencv_pkgconfig-4.5.2/opencv.pc.part >> ${PKGCONFIG}/opencv.pc
 
 # Tar
-tar -cjvf ${FINAL}/opencv-4.5.2-armhf.tar.bz2 ${FINAL}/opencv-4.5.2
+cd ${FINAL}
+tar -cjvf ${FINAL}/opencv-4.5.2-armhf.tar.bz2 opencv-4.5.2
 
 cd $LOCAL_PWD
