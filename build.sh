@@ -47,6 +47,7 @@ make install
 cd ${FINAL}/opencv-4.5.2/lib/python3.6/dist-packages/cv2/python-3.6/
 cp cv2.cpython-36m-x86_64-linux-gnu.so cv2.so
 
-cd ${FINAL}
-tar -cjvf ${LOCAL_PWD}/out/opencv-4.5.2-armhf.tar.bz2 opencv-4.5.2
+cd $LOCAL_PWD
+tar -cjvf ${FINAL}/opencv-4.5.2-armhf.tar.bz2 ${FINAL}/opencv-4.5.2
+
 cd $LOCAL_PWD
