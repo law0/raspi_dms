@@ -4,13 +4,15 @@ LOCAL_PWD=$(pwd)
 
 echo $LOCAL_PWD
 
-mkdir -p out/staging
-mkdir -p out/final
-mkdir -p out/build
+mkdir -p out/staging/
+mkdir -p out/final/
+mkdir -p out/final/pkgconfig/
+mkdir -p out/build/
 
 SRC=${LOCAL_PWD}/src
 STAGING=${LOCAL_PWD}/out/staging
 FINAL=${LOCAL_PWD}/out/final
+PKGCONFIG=${FINAL}/pkgconfig
 BUILD=${LOCAL_PWD}/out/build
 
 TOOLCHAIN_FILE=${SRC}/opencv-4.5.2/platforms/linux/arm-gnueabi.toolchain.cmake
@@ -18,8 +20,9 @@ TOOLCHAIN_FILE=${SRC}/opencv-4.5.2/platforms/linux/arm-gnueabi.toolchain.cmake
 ##############################################
 ### Build opencv
 ##############################################
-mkdir -p ${FINAL}/opencv-4.5.2
 mkdir -p ${BUILD}/opencv && cd ${BUILD}/opencv
+mkdir -p ${FINAL}/opencv-4.5.2
+
 cmake -D CMAKE_BUILD_TYPE=RELEASE \
   -D CMAKE_INSTALL_PREFIX=${FINAL}/opencv-4.5.2 \
   -D CMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
@@ -43,11 +46,18 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
 make $@
 make install
 
-#Wrong naming of python lib
+# Wrong naming of python lib
 cd ${FINAL}/opencv-4.5.2/lib/python3.6/dist-packages/cv2/python-3.6/
 cp cv2.cpython-36m-x86_64-linux-gnu.so cv2.so
 
+# Pkgconfig
 cd $LOCAL_PWD
+echo "libdir = ${FINAL}/opencv-4.5.2/lib" > ${PKGCONFIG}/opencv.pc
+echo "includedir = ${FINAL}/opencv-4.5.2/include/opencv4" >> ${PKGCONFIG}/opencv.pc
+echo >> ${PKGCONFIG}/opencv.pc
+cat ${SRC}/opencv_pkgconfig-4.5.2/opencv.pc.part >> ${PKGCONFIG}/opencv.pc
+
+# Tar
 tar -cjvf ${FINAL}/opencv-4.5.2-armhf.tar.bz2 ${FINAL}/opencv-4.5.2
 
 cd $LOCAL_PWD

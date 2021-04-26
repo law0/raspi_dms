@@ -13,5 +13,5 @@
 ### Build
 /!\ In docker !
 ```sh
-./build.sh -j8
+./build_libs.sh -j8 #Once
 ```
