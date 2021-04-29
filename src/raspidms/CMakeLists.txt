@@ -10,4 +10,5 @@ include_directories(${PKG_OPENCV_INCLUDE_DIRS})
 target_link_libraries(raspidms PRIVATE ${PKG_OPENCV_LDFLAGS})
 
 install(TARGETS raspidms DESTINATION bin)
+install(FILES run.sh DESTINATION bin)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/res/ DESTINATION res)
