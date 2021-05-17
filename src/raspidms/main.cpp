@@ -16,6 +16,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <errno.h>
+#include <math.h>
 #include <vector>
 #include <utility>
 
@@ -83,6 +84,82 @@ std::pair<std::vector<cv::Rect>, double> detectFacesResnetCaffe(cv::Mat frame) {
     return std::make_pair(faces, timeMark());
 }
 
+std::pair<std::vector<cv::Rect>, double> detectFacesYoloResnet18(cv::Mat frame) {
+    static cv::dnn::Net net = cv::dnn::readNetFromONNX("../res/YoloResnet18.onnx");
+    float confThreshold = 0.9;
+    float classThreshold = 0.5;
+    timeMark();
+    std::vector<cv::Rect> faces;
+
+    cv::Mat frameCopy = frame.clone();
+    cv::resize(frame, frameCopy, cv::Size(224, 224));
+
+    const cv::Scalar std_dev = cv::Scalar(0.229, 0.224, 0.225);
+
+    cv::Mat blob;
+    cv::dnn::blobFromImage(frameCopy, blob,
+                           1. / 255., //pixels values between 0 and 1
+                           cv::Size(224, 224),
+                           cv::Scalar(0.485, 0.456, 0.406), //substract mean
+                           true //swap Red Green
+                           );
+
+    // Divide blob by std.
+    cv::divide(blob, std_dev, blob);
+
+    net.setInput(blob);
+    cv::Mat outs = net.forward();
+
+    auto t = timeMark();
+
+    // Network produces output blob with a shape 1x49x(1+4*5)
+    // 49 Cells, and per cell : 1 class, 4 boxes, 1 confidence + 4 coords (x,y,w,h) per box.
+
+    const float scale_x = 224. / frame.cols;
+    const float scale_y = 224. / frame.rows;
+    const int num_cells = 49; // 7 * 7 cells
+    const int num_classes = 1;
+    const int num_box_per_cells = 4;
+    const int num_features_per_boxes = 5; //confidence, x, y, w, h
+    float* data = (float*)outs.data;
+    for (size_t i = 0; i < num_cells; ++i)
+    {
+        size_t index = i * (num_classes + num_box_per_cells * num_features_per_boxes);
+        float classe = data[index];
+        int cell_x = floor(i % 7) * 32; // 224 / 7 = 32
+        int cell_y = floor(i / 7) * 32;
+        if (classe > classThreshold)
+        {
+            float max_conf = 0.;
+            for (size_t j = 0; j < num_box_per_cells * num_features_per_boxes; j += num_features_per_boxes)
+            {
+                float conf   = (float)data[index + j + 1];
+                float width  = (float)data[index + j + 4];
+                float height = (float)data[index + j + 5];
+                if (conf > confThreshold && conf > max_conf)
+                {
+                    max_conf = conf;
+                    width  = (float)(width * 224);
+                    height = (float)(height * 224);
+                    float left   = (float)(data[i + j + 2] * 32) + (float)cell_x - width / 2. ;
+                    float top    = (float)(data[i + j + 3] * 32) + (float)cell_y - height / 2. ;
+
+                    /*std::cout << "Class " << classe << ", conf " << conf << ", ("
+                              << left << ", "
+                              << top << ", "
+                              << width << ", "
+                              << height << ")"
+                              << std::endl;*/
+
+                    faces.push_back(cv::Rect(left / scale_x, top / scale_y, width / scale_x, height / scale_y));
+                }
+            }
+        }
+    }
+
+    return std::make_pair(faces, t);
+}
+
 int main(int argc, char**argv) {
     if (argc < 3) {
         printHelp();
@@ -98,6 +175,8 @@ int main(int argc, char**argv) {
         detectFaces = detectFacesHaar;
     } else if (detector == "resnetCaffe") {
         detectFaces = detectFacesResnetCaffe;
+    } else if (detector == "yoloResnet18") {
+        detectFaces = detectFacesYoloResnet18;
     }
 
 
