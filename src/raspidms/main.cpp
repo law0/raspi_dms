@@ -34,7 +34,7 @@ std::pair<std::vector<cv::Rect>, double> detectFacesHaar(cv::Mat frame) {
     cv::cvtColor(frame, frameCopy, cv::COLOR_BGR2GRAY);
 
     std::vector<cv::Rect> faces;
-    face_cascade.detectMultiScale(frameCopy, faces, 1.1, 5);
+    face_cascade.detectMultiScale(frameCopy, faces, 1.15, 5);
 
     return std::make_pair(faces, timeMark());
 }
