@@ -84,9 +84,9 @@ std::pair<std::vector<cv::Rect>, double> detectFacesResnetCaffe(cv::Mat frame) {
     return std::make_pair(faces, timeMark());
 }
 
-std::pair<std::vector<cv::Rect>, double> detectFacesYoloResnet18(cv::Mat frame) {
-    static cv::dnn::Net net = cv::dnn::readNetFromONNX("../res/YoloResnet18.onnx");
-    float confThreshold = 0.9;
+std::pair<std::vector<cv::Rect>, double> detectFacesYolo(const std::string& onnx_path , cv::Mat frame) {
+    static cv::dnn::Net net = cv::dnn::readNetFromONNX(onnx_path);
+    float confThreshold = 0.5;
     float classThreshold = 0.5;
     timeMark();
     std::vector<cv::Rect> faces;
@@ -122,43 +122,60 @@ std::pair<std::vector<cv::Rect>, double> detectFacesYoloResnet18(cv::Mat frame) 
     const int num_box_per_cells = 4;
     const int num_features_per_boxes = 5; //confidence, x, y, w, h
     float* data = (float*)outs.data;
+
+    //Find the cell with max class
+    float class_max = 0.0;
+    size_t index_max = 0;
+    size_t i_max = 0;
     for (size_t i = 0; i < num_cells; ++i)
     {
         size_t index = i * (num_classes + num_box_per_cells * num_features_per_boxes);
         float classe = data[index];
-        int cell_x = floor(i % 7) * 32; // 224 / 7 = 32
-        int cell_y = floor(i / 7) * 32;
-        if (classe > classThreshold)
+        if (classe > classThreshold && classe > class_max)
         {
-            float max_conf = 0.;
-            for (size_t j = 0; j < num_box_per_cells * num_features_per_boxes; j += num_features_per_boxes)
-            {
-                float conf   = (float)data[index + j + 1];
-                float width  = (float)data[index + j + 4];
-                float height = (float)data[index + j + 5];
-                if (conf > confThreshold && conf > max_conf)
-                {
-                    max_conf = conf;
-                    width  = (float)(width * 224);
-                    height = (float)(height * 224);
-                    float left   = (float)(data[i + j + 2] * 32) + (float)cell_x - width / 2. ;
-                    float top    = (float)(data[i + j + 3] * 32) + (float)cell_y - height / 2. ;
-
-                    /*std::cout << "Class " << classe << ", conf " << conf << ", ("
-                              << left << ", "
-                              << top << ", "
-                              << width << ", "
-                              << height << ")"
-                              << std::endl;*/
-
-                    faces.push_back(cv::Rect(left / scale_x, top / scale_y, width / scale_x, height / scale_y));
-                }
-            }
+            class_max = classe;
+            index_max = index;
+            i_max = i;
         }
     }
 
+    int cell_x = floor(i_max % 7) * 32; // 224 / 7 = 32
+    int cell_y = floor(i_max / 7) * 32;
+
+    //in the max class cell, find the box with the max confidence
+    float max_conf = 0.;
+    size_t j_max = 0;
+    for (size_t j = 0; j < num_box_per_cells * num_features_per_boxes; j += num_features_per_boxes)
+    {
+        float conf   = (float)data[index_max + j + 1];
+        if (conf > confThreshold && conf > max_conf)
+        {
+            max_conf = conf;
+            j_max = j;
+        }
+    }
+
+
+    float width  = (float)data[index_max + j_max + 4];
+    float height = (float)data[index_max + j_max + 5];
+
+    width  = (float)(width * 224);
+    height = (float)(height * 224);
+    float left   = (float)(data[index_max + j_max + 2] * 32) + (float)cell_x - width / 2. ;
+    float top    = (float)(data[index_max + j_max + 3] * 32) + (float)cell_y - height / 2. ;
+
+    /*std::cout << "Class " << class_max << ", conf " << max_conf << ", ("
+              << left << ", "
+              << top << ", "
+              << width << ", "
+              << height << ")"
+              << std::endl;*/
+
+    faces.push_back(cv::Rect(left / scale_x, top / scale_y, width / scale_x, height / scale_y));
+
     return std::make_pair(faces, t);
 }
+
 
 int main(int argc, char**argv) {
     if (argc < 3) {
@@ -176,11 +193,20 @@ int main(int argc, char**argv) {
     } else if (detector == "resnetCaffe") {
         detectFaces = detectFacesResnetCaffe;
     } else if (detector == "yoloResnet18") {
-        detectFaces = detectFacesYoloResnet18;
+        detectFaces = [](cv::Mat frame) { return detectFacesYolo("../res/YoloResnet18.onnx", frame); };
+    } else if (detector == "yoloEffnetb0") {
+        detectFaces = [](cv::Mat frame) { return detectFacesYolo("../res/YoloEffnetb0.onnx", frame); };
+    }
+
+    cv::VideoCapture cap;
+
+    if (video_path == "0") {
+        cap.open(0);
+    } else {
+        cap.open(video_path);
     }
 
 
-    cv::VideoCapture cap(video_path);
     if (! cap.isOpened()) {
         std::cerr << "Can't open file " << video_path << std::endl;
     }
