@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.1)
 
 project (raspidms)
-add_executable(raspidms main.cpp)
+
+file(GLOB SOURCES "*.cpp")
+add_executable(raspidms ${SOURCES})
 
 find_package(PkgConfig REQUIRED)
 

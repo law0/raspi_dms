@@ -9,10 +9,11 @@ RUN for SUFFIX in "" "-updates" "-security"; do \
 
 RUN dpkg --add-architecture armhf && apt-get update 
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
   apt-transport-https \
   ca-certificates \
-  qemu-user-static \ 
+  qemu-user-static \
+  python-pip \
   python3.6-dev python3-numpy python-dev python-numpy \
   libpython-dev:armhf \
   libpython3.6-dev:armhf \
@@ -24,7 +25,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
   crossbuild-essential-armhf \
   gfortran-arm-linux-gnueabihf \
   cmake git pkg-config wget
-     
 
 ENV PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig
 

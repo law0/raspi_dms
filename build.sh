@@ -18,7 +18,7 @@ BUILD=${LOCAL_PWD}/out/build
 TOOLCHAIN_FILE=${SRC}/opencv-4.5.2/platforms/linux/arm-gnueabi.toolchain.cmake
 
 ##############################################
-### Build opencv
+### Build raspidms
 ##############################################
 mkdir -p ${BUILD}/raspidms && cd ${BUILD}/raspidms
 mkdir -p ${FINAL}/raspidms
