@@ -8,6 +8,7 @@
 ### Launch docker
 ```sh
 ./launch_docker.sh
+#If docker is not installed, follow : https://docs.docker.com/engine/install/ubuntu/
 ```
 
 ### Build
