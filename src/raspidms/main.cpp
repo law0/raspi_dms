@@ -23,6 +23,7 @@
 
 #include "TimeMark.hpp"
 
+#include "DetectFacesEmpty.h"
 #include "DetectFacesHaar.h"
 #include "DetectFacesMyYolo.h"
 #include "DetectFacesResnetCaffe.h"
@@ -60,6 +61,8 @@ int main(int argc, char**argv) {
         detectFaces = DetectFacesMyYolo(myYoloResnet18Path);
     } else if (detector == "yoloEffnetb0") {
         detectFaces = DetectFacesMyYolo(myYoloEffnetb0Path);
+    } else if (detector == "empty") {
+        detectFaces = DetectFacesEmpty();
     }
 
     cv::VideoCapture cap;
