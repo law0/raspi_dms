@@ -24,6 +24,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-in
   libxvidcore-dev:armhf libx264-dev:armhf \
   crossbuild-essential-armhf \
   gfortran-arm-linux-gnueabihf \
+  libopenblas-dev liblapack-dev \
   cmake git pkg-config wget
 
 ENV PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig

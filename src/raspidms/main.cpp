@@ -27,6 +27,7 @@
 #include "DetectFacesHaar.h"
 #include "DetectFacesMyYolo.h"
 #include "DetectFacesResnetCaffe.h"
+#include "DetectFacesHoG.h"
 
 const std::string haarCascadePath = "haarcascades/haarcascade_frontalface_default.xml";
 const std::string resnetCaffeProtoTxtPath = "../res/Resnet_SSD_deploy.prototxt";
@@ -61,6 +62,8 @@ int main(int argc, char**argv) {
         detectFaces = DetectFacesMyYolo(myYoloResnet18Path);
     } else if (detector == "yoloEffnetb0") {
         detectFaces = DetectFacesMyYolo(myYoloEffnetb0Path);
+    } else if (detector == "hog") {
+        detectFaces = DetectFacesHoG();
     } else if (detector == "empty") {
         detectFaces = DetectFacesEmpty();
     }

@@ -10,5 +10,8 @@ wget -O opencv_contrib.tar.gz https://github.com/opencv/opencv_contrib/archive/r
 tar xf opencv_contrib.tar.gz
 rm *.tar.gz
 
+########## Download dlib
+git clone --depth 1 --branch v19.22 https://github.com/davisking/dlib.git
+
 cd $LOCAL_PWD
 

@@ -24,7 +24,8 @@ mkdir -p ${BUILD}/raspidms && cd ${BUILD}/raspidms
 mkdir -p ${FINAL}/raspidms
 
 PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$PKGCONFIG \
-  cmake -D CMAKE_INSTALL_PREFIX=${FINAL}/raspidms \
+  cmake -D CMAKE_BUILD_TYPE=Release \
+  -D CMAKE_INSTALL_PREFIX=${FINAL}/raspidms \
   -D CMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
   ${SRC}/raspidms
 

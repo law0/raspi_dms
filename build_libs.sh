@@ -62,3 +62,25 @@ cd ${FINAL}
 tar -cjvf ${FINAL}/opencv-4.5.2-armhf.tar.bz2 opencv-4.5.2
 
 cd $LOCAL_PWD
+
+##############################################
+### Build dlib
+##############################################
+
+# dlib doesn't need to be built
+# It is built when raspidms is built (and link statically, which is fine for now)
+
+#mkdir -p ${BUILD}/dlib && cd ${BUILD}/dlib
+#mkdir -p ${FINAL}/dlib-v19.22
+
+#cmake -D CMAKE_BUILD_TYPE=Release \
+#  -D CMAKE_INSTALL_PREFIX=${FINAL}/dlib-v19.22 \
+#  -D CMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
+#  -D ENABLE_NEON=ON \
+#  -D ENABLE_VFPV3=ON \
+#   ${SRC}/dlib
+#
+#make $@
+#make install
+
+cd $LOCAL_PWD

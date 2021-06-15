@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.1)
 
 project (raspidms)
 
+add_subdirectory(../dlib dlib_build)
+
 file(GLOB SOURCES "*.cpp")
 add_executable(raspidms ${SOURCES})
 
@@ -9,7 +11,8 @@ find_package(PkgConfig REQUIRED)
 
 pkg_search_module(PKG_OPENCV REQUIRED opencv)
 include_directories(${PKG_OPENCV_INCLUDE_DIRS})
-target_link_libraries(raspidms PRIVATE ${PKG_OPENCV_LDFLAGS})
+target_link_libraries(raspidms PRIVATE ${PKG_OPENCV_LDFLAGS}
+                               PRIVATE dlib::dlib)
 
 install(TARGETS raspidms DESTINATION bin)
 install(FILES run.sh DESTINATION bin)
