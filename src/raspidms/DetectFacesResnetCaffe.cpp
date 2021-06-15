@@ -2,6 +2,12 @@
 
 #include "TimeMark.hpp"
 
+#include <opencv2/core.hpp>
+#include <opencv2/objdetect.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/dnn.hpp>
+#include <opencv2/core/utility.hpp>
+
 DetectFacesResnetCaffe::DetectFacesResnetCaffe(const std::string & protoTxtPath, const std::string & caffeModelPath)
     : IDetectFaces(protoTxtPath, caffeModelPath)
 {
