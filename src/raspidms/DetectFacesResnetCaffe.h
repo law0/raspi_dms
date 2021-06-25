@@ -8,6 +8,9 @@ class DetectFacesResnetCaffe : public IDetectFaces
 public:
     DetectFacesResnetCaffe(const std::string & protoTxtPath, const std::string & caffeModelPath);
     std::pair<std::vector<cv::Rect>, double> operator()(cv::Mat frame);
+
+private:
+    cv::dnn::Net m_net;
 };
 
 #endif // DETECTFACESRESNETCAFFE_H
