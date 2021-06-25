@@ -20,6 +20,9 @@ std::pair<std::vector<cv::Rect>, double> DetectFacesResnetCaffe::operator()(cv::
     timeMark();
     std::vector<cv::Rect> faces;
 
+    if(frame.empty())
+        return std::make_pair(faces, 0.0);
+
     cv::Mat frameCopy = frame.clone();
     cv::resize(frame, frameCopy, cv::Size(300, 300));
 

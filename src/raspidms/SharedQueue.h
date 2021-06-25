@@ -31,13 +31,6 @@ public:
     //MAY_BLOCK until an element is retrieved
     void pop_front_wait(T& item);
 
-    //retrieve and remove front element :
-    //MAY_BLOCK until an element is retrieved
-    //or timeout
-    //return true if item has been modified
-    //false if timeout
-    bool pop_front_wait_for(T& item, int ms);
-
     //push an element at back
     void push_back(const T& item);
     void push_back(T&& item);
@@ -100,27 +93,6 @@ void SharedQueue<T>::pop_front_wait(T& item)
     item = queue_.front();
     queue_.pop_front();
 }
-
-template <typename T>
-bool SharedQueue<T>::pop_front_wait_for(T& item, int ms)
-{
-    std::unique_lock<std::mutex> mlock(mutex_);
-    bool status = true;
-    if (queue_.empty())
-    {
-        status = cond_.wait_for(mlock,
-                                std::chrono::milliseconds(ms),
-                                [this]{ return !queue_.empty(); });
-    }
-
-    if(status) {
-        item = queue_.front();
-        queue_.pop_front();
-    }
-    return status;
-}
-
-
 
 template <typename T>
 void SharedQueue<T>::push_back(const T& item)

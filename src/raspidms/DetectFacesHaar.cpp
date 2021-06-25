@@ -14,6 +14,7 @@ DetectFacesHaar::DetectFacesHaar(const std::string & path) : IDetectFaces(path),
 }
 
 std::pair<std::vector<cv::Rect>, double> DetectFacesHaar::operator()(cv::Mat frame) {
+    std::cout << "haar" << std::endl;
     timeMark();
     cv::Mat frameCopy = frame.clone();
     // Convert to gray

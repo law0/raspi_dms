@@ -39,7 +39,7 @@ const std::string RESNET_CAFFE_MODEL_PATH = "../res/Res10_300x300_SSD_iter_14000
 const std::string MY_YOLO_RESNET_18_PATH = "../res/YoloResnet18.onnx";
 const std::string MY_YOLO_EFFNET_B0_PATH = "../res/YoloEffnetb0.onnx";
 
-const uint32_t IN_BUFFER_SIZE = 6;
+const uint32_t IN_BUFFER_SIZE = 16;
 const uint32_t OUT_BUFFER_SIZE = 4;
 const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
 
@@ -98,7 +98,7 @@ int main(int argc, char**argv) {
     else if (detector == "haar+yoloEffnetb0")
     {
         detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
-        detectFaces = DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH);
+        detectFaces2 = DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH);
     }
     else if (detector == "empty")
     {
@@ -137,8 +137,10 @@ int main(int argc, char**argv) {
                 return;
 
             //TODO consider no copy
+            //Don't wait for frame, there should be plenty
             cv::Mat frontFrame;
-            inFrames.pop_front_wait(frontFrame);
+            if(! inFrames.pop_front_no_wait(frontFrame))
+                return;
 
             // Detect the faces
             std::pair<std::vector<cv::Rect>, double> detectedFaces = f(frontFrame);
@@ -152,6 +154,13 @@ int main(int argc, char**argv) {
             cv::Scalar red(0,0,255);
 
             cv::Scalar& color = detectedFaces.second < 0.4 ? blue : red;
+
+            // If possible draw on the latest frame instead on the one
+            // we computed
+            // It adds fluidity (but ofc adds error)
+            cv::Mat potentialFrame;
+            if(inFrames.pop_front_no_wait(potentialFrame))
+                frontFrame = potentialFrame;
 
             for(const auto & rect : detectedFaces.first) {
                 rectangle(frontFrame, cv::Point(rect.x, rect.y),
@@ -172,9 +181,12 @@ int main(int argc, char**argv) {
 
     cv::Mat outFrame;
 
+    long counter = 0;
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     for(;;)
     {
+        counter++;
+
         //Avoid having all thread fire at the same time
         //we want them to round
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -203,16 +215,19 @@ int main(int argc, char**argv) {
             inFrames.push_back(frame);
         }
 
+        // Make sure to fill a whole buffer before starting
+        if (counter < IN_BUFFER_SIZE)
+            continue;
+
         if (multithread) {
             //thread pool takes frame from inFrames and output to outFrames
             //there is actually a queue in pool, that take what you push
-            //in order. But I don't want to constantly grow the queue
-            if (pool.queue_size() < MAX_THREAD && dfw2) {
-                pool.push(dfw2); //2 first because the longest
-            }
-
+            //in order. But I don't want to grow the queue infintely
             if (pool.queue_size() < MAX_THREAD) {
                 pool.push(dfw);
+                if(dfw2)
+                    pool.push(dfw2);
+
             }
         } else {
             dfw(0);
