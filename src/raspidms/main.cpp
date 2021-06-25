@@ -19,6 +19,7 @@
 #include <math.h>
 #include <memory>
 #include <vector>
+#include <queue>
 #include <utility>
 
 #include "TimeMark.hpp"
@@ -29,11 +30,14 @@
 #include "DetectFacesResnetCaffe.h"
 #include "DetectFacesHoG.h"
 
-const std::string haarCascadePath = "haarcascades/haarcascade_frontalface_default.xml";
-const std::string resnetCaffeProtoTxtPath = "../res/Resnet_SSD_deploy.prototxt";
-const std::string resnetCaffeModelPath = "../res/Res10_300x300_SSD_iter_140000.caffemodel";
-const std::string myYoloResnet18Path = "../res/YoloResnet18.onnx";
-const std::string myYoloEffnetb0Path = "../res/YoloEffnetb0.onnx";
+const std::string HAAR_CASCADE_PATH = "haarcascades/haarcascade_frontalface_default.xml";
+const std::string RESNET_CAFFE_PROTO_TXT_PATH = "../res/Resnet_SSD_deploy.prototxt";
+const std::string RESNET_CAFFE_MODEL_PATH = "../res/Res10_300x300_SSD_iter_140000.caffemodel";
+const std::string MY_YOLO_RESNET_18_PATH = "../res/YoloResnet18.onnx";
+const std::string MY_YOLO_EFFNET_B0_PATH = "../res/YoloEffnetb0.onnx";
+
+const uint32_t IN_BUFFER_SIZE = 10;
+const uint32_t OUT_BUFFER_SIZE = 2;
 
 void printHelp () {
     std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
@@ -52,16 +56,16 @@ int main(int argc, char**argv) {
     /** can also use :
     /** std::unique_ptr<IDetectFaces> detectFaces = std::make_unique<DetectFacesHaar>(haarCascadePath);
      */
-    std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> detectFaces = DetectFacesHaar(haarCascadePath);
+    std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
 
     if (detector == "haar") {
-        detectFaces = DetectFacesHaar(haarCascadePath);
+        detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
     } else if (detector == "resnetCaffe") {
-        detectFaces = DetectFacesResnetCaffe(resnetCaffeProtoTxtPath, resnetCaffeModelPath);
+        detectFaces = DetectFacesResnetCaffe(RESNET_CAFFE_PROTO_TXT_PATH, RESNET_CAFFE_MODEL_PATH);
     } else if (detector == "yoloResnet18") {
-        detectFaces = DetectFacesMyYolo(myYoloResnet18Path);
+        detectFaces = DetectFacesMyYolo(MY_YOLO_RESNET_18_PATH);
     } else if (detector == "yoloEffnetb0") {
-        detectFaces = DetectFacesMyYolo(myYoloEffnetb0Path);
+        detectFaces = DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH);
     } else if (detector == "hog") {
         detectFaces = DetectFacesHoG();
     } else if (detector == "empty") {
@@ -83,37 +87,65 @@ int main(int argc, char**argv) {
 
     std::cout << "Start grabbing" << std::endl;
 
-    cv::Mat frame;
+    std::queue<cv::Mat> inFrames;
+    std::queue<cv::Mat> outFrames;
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     long i = 0;
     for(;;)
     {
-        // wait for a new frame from camera and store it into 'frame'
-        cap.read(frame);
-        // check if we succeeded
-        if (frame.empty()) {
-            std::cerr << "ERROR! blank frame grabbed\n";
-            break;
-        }
-
-        // Detect the faces
-        std::pair<std::vector<cv::Rect>, double> detected_faces = detectFaces(frame);
-
-        ++i;
-        if (i % 10 == 0)
-            std::cout << "time (sec): " << detected_faces.second << std::endl;
-
-        for(const auto & rect : detected_faces.first) {
-            rectangle(frame, cv::Point(rect.x, rect.y),
-                      cv::Point(rect.x + rect.width, rect.y + rect.height),
-                      cv::Scalar(255, 0, 0),
-                      3, 8, 0);
-        }
-
-        cv::imshow("Head", frame);
-
         if (cv::pollKey() >= 0)
             break;
+
+        // lose frames if too slow
+        if (inFrames.size() >= IN_BUFFER_SIZE) {
+            inFrames.pop();
+        }
+
+        if (inFrames.size() < IN_BUFFER_SIZE) {
+            cv::Mat frame;
+
+            // wait for a new frame from camera and store it into 'frame'
+            cap.read(frame);
+            // check if we succeeded
+            if (frame.empty()) {
+                std::cerr << "ERROR! blank frame grabbed\n";
+                break;
+            }
+
+            //TODO consider no copy
+            inFrames.push(frame);
+        }
+
+
+
+        {//In bracket part will be threaded next
+            //TODO consider no copy
+            cv::Mat frontFrame = inFrames.front();
+            inFrames.pop();
+
+            // Detect the faces
+            std::pair<std::vector<cv::Rect>, double> detectedFaces = detectFaces(frontFrame);
+
+            if (i % 10 == 0) {
+                std::cout << "time (sec): " << detectedFaces.second << std::endl;
+            }
+            ++i;
+
+            for(const auto & rect : detectedFaces.first) {
+                rectangle(frontFrame, cv::Point(rect.x, rect.y),
+                          cv::Point(rect.x + rect.width, rect.y + rect.height),
+                          cv::Scalar(255, 0, 0),
+                          3, 8, 0);
+            }
+
+            if (outFrames.size() < OUT_BUFFER_SIZE)
+                outFrames.push(frontFrame);
+        }
+
+        if (! outFrames.empty()) {
+            cv::imshow("Head", outFrames.front());
+            outFrames.pop();
+        }
     }
 
     return 0;
