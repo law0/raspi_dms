@@ -10,6 +10,8 @@ public:
     std::pair<std::vector<cv::Rect>, double> operator()(cv::Mat frame);
 
 private:
+
+    //warning dnn::Net seems not reentrant
     cv::dnn::Net m_net;
 };
 

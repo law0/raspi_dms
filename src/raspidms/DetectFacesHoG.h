@@ -22,6 +22,8 @@ public:
     static dlib::rectangle openCVRectToDlib(cv::Rect r);
 
 private:
+
+    //warning maybe not reentrant
     dlib::frontal_face_detector m_frontalFaceDetector;
 };
 

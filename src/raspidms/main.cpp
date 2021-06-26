@@ -63,46 +63,52 @@ int main(int argc, char**argv) {
         multithread = true;
     }
 
-    /**
-    /** can also use :
-    /** std::unique_ptr<IDetectFaces> detectFaces = std::make_unique<DetectFacesHaar>(haarCascadePath);
-     */
-    DetectFaceFunc detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
-    DetectFaceFunc detectFaces2;
+
+    //using a vector because IDetectFaces object could be not reentrant
+    //so using one IDetectFaces object for one thread only is a solution
+    std::vector<DetectFaceFunc> detectFaces;
 
     if (detector == "haar")
     {
-        detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
+        for(int i = 0; i< MAX_THREAD; ++i)
+            detectFaces.push_back(DetectFacesHaar(HAAR_CASCADE_PATH));
     }
     else if (detector == "resnetCaffe")
     {
-        detectFaces = DetectFacesResnetCaffe(RESNET_CAFFE_PROTO_TXT_PATH, RESNET_CAFFE_MODEL_PATH);
+        for(int i = 0; i< MAX_THREAD; ++i)
+            detectFaces.push_back(DetectFacesResnetCaffe(RESNET_CAFFE_PROTO_TXT_PATH, RESNET_CAFFE_MODEL_PATH));
     }
     else if (detector == "haar+resnetCaffe")
     {
-        detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
-        detectFaces2 = DetectFacesResnetCaffe(RESNET_CAFFE_PROTO_TXT_PATH, RESNET_CAFFE_MODEL_PATH);
+        detectFaces.push_back(DetectFacesResnetCaffe(RESNET_CAFFE_PROTO_TXT_PATH, RESNET_CAFFE_MODEL_PATH));
+        for(int i = 0; i< MAX_THREAD - 1; ++i)
+            detectFaces.push_back(DetectFacesHaar(HAAR_CASCADE_PATH));
     }
     else if (detector == "yoloResnet18")
     {
-        detectFaces = DetectFacesMyYolo(MY_YOLO_RESNET_18_PATH);
+        for(int i = 0; i< MAX_THREAD; ++i)
+            detectFaces.push_back(DetectFacesMyYolo(MY_YOLO_RESNET_18_PATH));
     }
     else if (detector == "yoloEffnetb0")
     {
-        detectFaces = DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH);
+        for(int i = 0; i< MAX_THREAD; ++i)
+            detectFaces.push_back(DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH));
     }
     else if (detector == "hog")
     {
-        detectFaces = DetectFacesHoG();
+        for(int i = 0; i< MAX_THREAD; ++i)
+            detectFaces.push_back(DetectFacesHoG());
     }
     else if (detector == "haar+yoloEffnetb0")
     {
-        detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
-        detectFaces2 = DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH);
+        detectFaces.push_back(DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH));
+        for(int i = 0; i< MAX_THREAD - 1; ++i)
+            detectFaces.push_back(DetectFacesHaar(HAAR_CASCADE_PATH));
     }
     else if (detector == "empty")
     {
-        detectFaces = DetectFacesEmpty();
+        for(int i = 0; i< MAX_THREAD; ++i)
+            detectFaces.push_back(DetectFacesEmpty());
     }
 
     cv::VideoCapture cap;
@@ -125,59 +131,48 @@ int main(int argc, char**argv) {
     ThreadPool pool(MAX_THREAD);
     std::atomic<long> i(0);
 
-    auto wrapper = [&](DetectFaceFunc& f) -> std::function<void(int)> {
-        if(!f)
-            return {};
+    auto detectFacesByThread = [&](int id) {
+        std::cout << "thread id " << id << std::endl;
 
-        std::function<void(int)> wrappedFunc = [&](int id) {
-            std::cout << "thread id " << id << std::endl;
+        //avoid calculus completely if outFrames buffer is full
+        if (outFrames.size() >= OUT_BUFFER_SIZE)
+            return;
 
-            //avoid calculus completely if outFrames buffer is full
-            if (outFrames.size() >= OUT_BUFFER_SIZE)
-                return;
+        //TODO consider no copy
+        //Don't wait for frame, there should be plenty
+        cv::Mat frontFrame;
+        if(! inFrames.pop_front_no_wait(frontFrame))
+            return;
 
-            //TODO consider no copy
-            //Don't wait for frame, there should be plenty
-            cv::Mat frontFrame;
-            if(! inFrames.pop_front_no_wait(frontFrame))
-                return;
+        // Detect the faces
+        std::pair<std::vector<cv::Rect>, double> detectedFaces = detectFaces[id](frontFrame);
 
-            // Detect the faces
-            std::pair<std::vector<cv::Rect>, double> detectedFaces = f(frontFrame);
+        if (i % 10 == 0) {
+            std::cout << "time (sec): " << detectedFaces.second << std::endl;
+        }
+        ++i; //unprotected but who cares
 
-            if (i % 10 == 0) {
-                std::cout << "time (sec): " << detectedFaces.second << std::endl;
-            }
-            ++i; //unprotected but who cares
+        cv::Scalar blue(255,0,0);
+        cv::Scalar red(0,0,255);
 
-            cv::Scalar blue(255,0,0);
-            cv::Scalar red(0,0,255);
+        cv::Scalar& color = detectedFaces.second < 0.4 ? blue : red;
 
-            cv::Scalar& color = detectedFaces.second < 0.4 ? blue : red;
+        // If possible draw on the latest frame instead on the one
+        // we computed
+        // It adds fluidity (but ofc adds error)
+        cv::Mat potentialFrame;
+        if(inFrames.pop_front_no_wait(potentialFrame))
+            frontFrame = potentialFrame;
 
-            // If possible draw on the latest frame instead on the one
-            // we computed
-            // It adds fluidity (but ofc adds error)
-            cv::Mat potentialFrame;
-            if(inFrames.pop_front_no_wait(potentialFrame))
-                frontFrame = potentialFrame;
+        for(const auto & rect : detectedFaces.first) {
+            rectangle(frontFrame, cv::Point(rect.x, rect.y),
+                      cv::Point(rect.x + rect.width, rect.y + rect.height),
+                      color,
+                      3, 8, 0);
+        }
 
-            for(const auto & rect : detectedFaces.first) {
-                rectangle(frontFrame, cv::Point(rect.x, rect.y),
-                          cv::Point(rect.x + rect.width, rect.y + rect.height),
-                          color,
-                          3, 8, 0);
-            }
-
-            outFrames.push_back(frontFrame);
-        };
-
-        return wrappedFunc;
+        outFrames.push_back(frontFrame);
     };
-
-    auto dfw = wrapper(detectFaces);
-    auto dfw2 = wrapper(detectFaces2);
-
 
     cv::Mat outFrame;
 
@@ -189,7 +184,7 @@ int main(int argc, char**argv) {
 
         //Avoid having all thread fire at the same time
         //we want them to round
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
         if (cv::pollKey() >= 0) {
             pool.stop();
             break;
@@ -224,19 +219,14 @@ int main(int argc, char**argv) {
             //there is actually a queue in pool, that take what you push
             //in order. But I don't want to grow the queue infintely
             if (pool.queue_size() < MAX_THREAD) {
-                pool.push(dfw);
-                if(dfw2)
-                    pool.push(dfw2);
-
+                pool.push(detectFacesByThread);
             }
         } else {
-            dfw(0);
+            detectFacesByThread(0);
         }
 
-        outFrames.pop_front_wait(outFrame);
-        cv::imshow("Head", outFrame);
-
-
+        if(outFrames.pop_front_no_wait(outFrame))
+            cv::imshow("Head", outFrame);
     }
     return 0;
 }

@@ -10,6 +10,8 @@ public:
     std::pair<std::vector<cv::Rect>, double> operator()(cv::Mat frame);
 
 private:
+
+    //warning maybe not reentrant
     cv::CascadeClassifier m_faceCascade;
 };
 

@@ -11,16 +11,20 @@
 #include "SharedQueue.h"
 
 /**
- * @brief The ThreadPool class
+ * @brief The ThreadPool class allows to push task into a pool of thread
+ * The task to push must have the type std::function<void(int id)>
+ * The int id passed to the function will be the id of thread (useful for
+ * resource management for non reentrant stuff)
+ *
  * USAGE :
  * ThreadPool p(4);
  * std::vector<std::future<int>> results(4); / future<type> can be anything !
  *  for (int i = 0; i < 8; ++i) { // for 8 iterations,
  *      for (int j = 0; j < 4; ++j) {
- *          results[j] = p.push([&arr, j](int){ arr[j] +=2; return arr[j]; }); //function must take int - id of thread as param
+ *          results[j] = p.push([&arr, j](int){ arr[j] +=2; }); //function must take int - id of thread as param
  *      }
  *      for (int j = 0; j < 4; ++j) {
- *          std::cout << results[j].get() << std::endl;
+ *          results[j].get();
  *      }
  *      arr[4] = std::min_element(arr, arr + 4);
     }
