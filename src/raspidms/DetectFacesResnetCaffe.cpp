@@ -9,24 +9,27 @@
 #include <opencv2/core/utility.hpp>
 
 DetectFacesResnetCaffe::DetectFacesResnetCaffe(const std::string & protoTxtPath, const std::string & caffeModelPath)
-    : IDetectFaces(protoTxtPath, caffeModelPath)
+    : IDetectFaces(protoTxtPath, caffeModelPath),
+      m_net(cv::dnn::readNetFromCaffe(protoTxtPath, caffeModelPath))
 {
 
 }
 
-std::pair<std::vector<cv::Rect>, double> DetectFacesResnetCaffe::operator()(cv::Mat frame) {
-    static cv::dnn::Net net = cv::dnn::readNetFromCaffe(m_path, m_secondPath);
+DetectedFacesResult DetectFacesResnetCaffe::operator()(cv::Mat frame) {
     double confThreshold = 0.5;
     timeMark();
     std::vector<cv::Rect> faces;
+
+    if(frame.empty())
+        return std::make_pair(faces, 0.0);
 
     cv::Mat frameCopy = frame.clone();
     cv::resize(frame, frameCopy, cv::Size(300, 300));
 
     cv::Mat blob;
     cv::dnn::blobFromImage(frameCopy, blob, 1.0, cv::Size(300, 300));
-    net.setInput(blob);
-    cv::Mat outs = net.forward();
+    m_net.setInput(blob);
+    cv::Mat outs = m_net.forward();
 
     // Network produces output blob with a shape 1x1xNx7 where N is a number of
     // detections and an every detection is a vector of values

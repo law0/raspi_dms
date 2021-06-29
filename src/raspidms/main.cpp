@@ -12,36 +12,32 @@
 #include <opencv2/dnn.hpp>
 #include <opencv2/core/utility.hpp>
 
+#include <time.h>
 #include <iostream>
 #include <string>
 #include <sys/stat.h>
 #include <errno.h>
 #include <math.h>
 #include <memory>
+#include <thread>
 #include <vector>
-#include <queue>
 #include <utility>
 
 #include "TimeMark.hpp"
 
-#include "DetectFacesEmpty.h"
-#include "DetectFacesHaar.h"
-#include "DetectFacesMyYolo.h"
-#include "DetectFacesResnetCaffe.h"
-#include "DetectFacesHoG.h"
+#include "DetectFacesStage.h"
 
-const std::string HAAR_CASCADE_PATH = "haarcascades/haarcascade_frontalface_default.xml";
-const std::string RESNET_CAFFE_PROTO_TXT_PATH = "../res/Resnet_SSD_deploy.prototxt";
-const std::string RESNET_CAFFE_MODEL_PATH = "../res/Res10_300x300_SSD_iter_140000.caffemodel";
-const std::string MY_YOLO_RESNET_18_PATH = "../res/YoloResnet18.onnx";
-const std::string MY_YOLO_EFFNET_B0_PATH = "../res/YoloEffnetb0.onnx";
+#include "ThreadPool.h"
+#include "SharedQueue.h"
 
-const uint32_t IN_BUFFER_SIZE = 10;
-const uint32_t OUT_BUFFER_SIZE = 2;
+const uint32_t IN_BUFFER_SIZE = 16;
+const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
 
 void printHelp () {
     std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
 }
+
+typedef std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> DetectFaceFunc;
 
 int main(int argc, char**argv) {
     if (argc < 3) {
@@ -49,28 +45,10 @@ int main(int argc, char**argv) {
         return 0;
     }
 
+    const bool multithread = true;
     const std::string video_path(argv[1]);
-    const std::string detector(argv[2]);
-
-    /**
-    /** can also use :
-    /** std::unique_ptr<IDetectFaces> detectFaces = std::make_unique<DetectFacesHaar>(haarCascadePath);
-     */
-    std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
-
-    if (detector == "haar") {
-        detectFaces = DetectFacesHaar(HAAR_CASCADE_PATH);
-    } else if (detector == "resnetCaffe") {
-        detectFaces = DetectFacesResnetCaffe(RESNET_CAFFE_PROTO_TXT_PATH, RESNET_CAFFE_MODEL_PATH);
-    } else if (detector == "yoloResnet18") {
-        detectFaces = DetectFacesMyYolo(MY_YOLO_RESNET_18_PATH);
-    } else if (detector == "yoloEffnetb0") {
-        detectFaces = DetectFacesMyYolo(MY_YOLO_EFFNET_B0_PATH);
-    } else if (detector == "hog") {
-        detectFaces = DetectFacesHoG();
-    } else if (detector == "empty") {
-        detectFaces = DetectFacesEmpty();
-    }
+    const std::string firstDetector = argc > 2 ? argv[2] : "";
+    const std::string secondDetector = argc > 3 ? argv[3] : "";
 
     cv::VideoCapture cap;
 
@@ -80,30 +58,35 @@ int main(int argc, char**argv) {
         cap.open(video_path);
     }
 
-
     if (! cap.isOpened()) {
         std::cerr << "Can't open file " << video_path << std::endl;
     }
 
     std::cout << "Start grabbing" << std::endl;
 
-    std::queue<cv::Mat> inFrames;
-    std::queue<cv::Mat> outFrames;
+    std::shared_ptr<SharedQueue<cv::Mat>> inFrames(new SharedQueue<cv::Mat>());
+    std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects(new SharedQueue<DetectedFacesResult>());
+    DetectFacesStage detectFacesStage(inFrames, outRects);
+    ThreadPool pool(MAX_THREAD);
+
+    clock_t lastTime20 = clock();
+    clock_t lastTime50 = lastTime20;
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
-    long i = 0;
+    cv::Mat frame;
+    DetectedFacesResult rectsToDraw;
     for(;;)
     {
-        if (cv::pollKey() >= 0)
+        if (cv::pollKey() >= 0) {
+            pool.stop();
             break;
-
-        // lose frames if too slow
-        if (inFrames.size() >= IN_BUFFER_SIZE) {
-            inFrames.pop();
         }
 
-        if (inFrames.size() < IN_BUFFER_SIZE) {
-            cv::Mat frame;
+        // lose frames if too slow
+        if (inFrames->size() >= IN_BUFFER_SIZE) {
+            inFrames->pop_front_no_wait();
+        }
 
+        if (inFrames->size() < IN_BUFFER_SIZE) {
             // wait for a new frame from camera and store it into 'frame'
             cap.read(frame);
             // check if we succeeded
@@ -113,40 +96,47 @@ int main(int argc, char**argv) {
             }
 
             //TODO consider no copy
-            inFrames.push(frame);
+            inFrames->push_back(frame);
         }
 
+        if (multithread) {
+            clock_t currTime = clock();
+            clock_t elapsed20 = currTime - lastTime20;
+            clock_t elapsed50 = currTime - lastTime50;
 
-
-        {//In bracket part will be threaded next
-            //TODO consider no copy
-            cv::Mat frontFrame = inFrames.front();
-            inFrames.pop();
-
-            // Detect the faces
-            std::pair<std::vector<cv::Rect>, double> detectedFaces = detectFaces(frontFrame);
-
-            if (i % 10 == 0) {
-                std::cout << "time (sec): " << detectedFaces.second << std::endl;
-            }
-            ++i;
-
-            for(const auto & rect : detectedFaces.first) {
-                rectangle(frontFrame, cv::Point(rect.x, rect.y),
-                          cv::Point(rect.x + rect.width, rect.y + rect.height),
-                          cv::Scalar(255, 0, 0),
-                          3, 8, 0);
+            if (elapsed20 / CLOCKS_PER_SEC > 0.20) {
+                lastTime20 = currTime;
+                detectFacesStage.schedNextDetector(firstDetector);
             }
 
-            if (outFrames.size() < OUT_BUFFER_SIZE)
-                outFrames.push(frontFrame);
+            if (elapsed50 / CLOCKS_PER_SEC > 0.50) {
+                lastTime50 = currTime;
+                detectFacesStage.schedNextDetector(secondDetector);
+            }
+
+            //thread pool takes frame from inFrames and output to outFrames
+            //there is actually a queue in pool, that take what you push
+            //in order. But I don't want to grow the queue infintely
+            if (pool.queue_size() < MAX_THREAD) {
+                pool.push(std::ref(detectFacesStage));
+            }
+        } else {
+            detectFacesStage(0);
         }
 
-        if (! outFrames.empty()) {
-            cv::imshow("Head", outFrames.front());
-            outFrames.pop();
+        DetectedFacesResult rects;
+        if (outRects->pop_front_no_wait(rects) && rects.first.size() > 0) {
+            rectsToDraw = rects;
         }
+
+        for(const auto & rect : rectsToDraw.first) {
+            rectangle(frame, cv::Point(rect.x, rect.y),
+                      cv::Point(rect.x + rect.width, rect.y + rect.height),
+                      cv::Scalar(255, 0, 0),
+                      3, 8, 0);
+        }
+
+        cv::imshow("Head", frame);
     }
-
     return 0;
 }

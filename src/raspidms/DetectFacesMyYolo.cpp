@@ -9,17 +9,20 @@
 #include <opencv2/core/utility.hpp>
 
 
-DetectFacesMyYolo::DetectFacesMyYolo(const std::string & path) : IDetectFaces(path)
+DetectFacesMyYolo::DetectFacesMyYolo(const std::string & path) : IDetectFaces(path), m_net(cv::dnn::readNetFromONNX(path))
 {
 
 }
 
-std::pair<std::vector<cv::Rect>, double> DetectFacesMyYolo::operator()(cv::Mat frame) {
-    static cv::dnn::Net net = cv::dnn::readNetFromONNX(m_path);
+DetectedFacesResult DetectFacesMyYolo::operator()(cv::Mat frame) {
+    std::cout << "yolo" << std::endl;
     float confThreshold = 0.5;
     float classThreshold = 0.5;
     timeMark();
     std::vector<cv::Rect> faces;
+
+    if(frame.empty())
+        return std::make_pair(faces, 0.0);
 
     cv::Mat frameCopy = frame.clone();
     cv::resize(frame, frameCopy, cv::Size(224, 224));
@@ -37,8 +40,8 @@ std::pair<std::vector<cv::Rect>, double> DetectFacesMyYolo::operator()(cv::Mat f
     // Divide blob by std.
     cv::divide(blob, std_dev, blob);
 
-    net.setInput(blob);
-    cv::Mat outs = net.forward();
+    m_net.setInput(blob);
+    cv::Mat outs = m_net.forward();
 
     auto t = timeMark();
 

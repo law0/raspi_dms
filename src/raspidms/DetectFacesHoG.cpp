@@ -21,7 +21,7 @@ dlib::rectangle DetectFacesHoG::openCVRectToDlib(cv::Rect r)
   return dlib::rectangle((long)r.tl().x, (long)r.tl().y, (long)r.br().x - 1, (long)r.br().y - 1);
 }
 
-std::pair<std::vector<cv::Rect>, double> DetectFacesHoG::operator()(cv::Mat frame) {
+DetectedFacesResult DetectFacesHoG::operator()(cv::Mat frame) {
     timeMark();
 
     std::vector<cv::Rect> faces;

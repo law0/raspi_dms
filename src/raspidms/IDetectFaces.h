@@ -11,6 +11,8 @@
 
 #include <string>
 
+typedef std::pair<std::vector<cv::Rect>, double> DetectedFacesResult;
+
 class IDetectFaces
 {
 public:
@@ -27,7 +29,7 @@ public:
      * - a double : time in second it took for computing
      */
     //TODO consider no copy
-    virtual std::pair<std::vector<cv::Rect>, double> operator()(cv::Mat frame) = 0;
+    virtual DetectedFacesResult operator()(cv::Mat frame) = 0;
 
 protected:
     const std::string m_path;

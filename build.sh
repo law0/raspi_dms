@@ -34,6 +34,6 @@ make install
 
 # Tar
 cd ${FINAL}
-tar -cjvf ${FINAL}/raspidms-armhf.tar.bz2 raspidms
+#tar -cjvf ${FINAL}/raspidms-armhf.tar.bz2 raspidms
 
 cd $LOCAL_PWD
