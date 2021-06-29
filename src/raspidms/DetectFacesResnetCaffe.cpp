@@ -15,7 +15,7 @@ DetectFacesResnetCaffe::DetectFacesResnetCaffe(const std::string & protoTxtPath,
 
 }
 
-std::pair<std::vector<cv::Rect>, double> DetectFacesResnetCaffe::operator()(cv::Mat frame) {
+DetectedFacesResult DetectFacesResnetCaffe::operator()(cv::Mat frame) {
     double confThreshold = 0.5;
     timeMark();
     std::vector<cv::Rect> faces;
