@@ -25,6 +25,7 @@ private:
 
     //warning maybe not reentrant
     dlib::frontal_face_detector m_frontalFaceDetector;
+    const long m_id;
 };
 
 #endif // DETECTFACESHOG_H

@@ -1,12 +1,13 @@
 #include "DetectFacesHoG.h"
 
-#include "TimeMark.hpp"
+#include "TimeMark.h"
 
 #include <dlib/opencv/cv_image.h>
 
 DetectFacesHoG::DetectFacesHoG(const std::string & path)
     : IDetectFaces(path),
-      m_frontalFaceDetector(dlib::get_frontal_face_detector())
+      m_frontalFaceDetector(dlib::get_frontal_face_detector()),
+      m_id(getUniqueId())
 {
 
 }
@@ -22,7 +23,7 @@ dlib::rectangle DetectFacesHoG::openCVRectToDlib(cv::Rect r)
 }
 
 DetectedFacesResult DetectFacesHoG::operator()(cv::Mat frame) {
-    timeMark();
+    timeMark(m_id);
 
     std::vector<cv::Rect> faces;
 
@@ -49,5 +50,5 @@ DetectedFacesResult DetectFacesHoG::operator()(cv::Mat frame) {
         faces.push_back(cvRect);
     });
 
-    return std::make_pair(faces, timeMark());
+    return std::make_pair(faces, timeMark(m_id));
 }

@@ -1,6 +1,6 @@
 #include "DetectFacesMyYolo.h"
 
-#include "TimeMark.hpp"
+#include "TimeMark.h"
 
 #include <opencv2/core.hpp>
 #include <opencv2/objdetect.hpp>
@@ -9,7 +9,10 @@
 #include <opencv2/core/utility.hpp>
 
 
-DetectFacesMyYolo::DetectFacesMyYolo(const std::string & path) : IDetectFaces(path), m_net(cv::dnn::readNetFromONNX(path))
+DetectFacesMyYolo::DetectFacesMyYolo(const std::string & path) :
+    IDetectFaces(path),
+    m_net(cv::dnn::readNetFromONNX(path)),
+    m_id(getUniqueId())
 {
 
 }
@@ -18,7 +21,7 @@ DetectedFacesResult DetectFacesMyYolo::operator()(cv::Mat frame) {
     std::cout << "yolo" << std::endl;
     float confThreshold = 0.5;
     float classThreshold = 0.5;
-    timeMark();
+    timeMark(m_id);
     std::vector<cv::Rect> faces;
 
     if(frame.empty())
@@ -43,7 +46,7 @@ DetectedFacesResult DetectFacesMyYolo::operator()(cv::Mat frame) {
     m_net.setInput(blob);
     cv::Mat outs = m_net.forward();
 
-    auto t = timeMark();
+    auto t = timeMark(m_id);
 
     // Network produces output blob with a shape 1x49x(1+4*5)
     // 49 Cells, and per cell : 1 class, 4 boxes, 1 confidence + 4 coords (x,y,w,h) per box.

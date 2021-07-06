@@ -13,6 +13,7 @@ private:
 
     //warning dnn::Net seems not reentrant
     cv::dnn::Net m_net;
+    const long m_id;
 };
 
 #endif // DETECTFACESRESNETCAFFE_H

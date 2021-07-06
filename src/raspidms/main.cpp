@@ -23,12 +23,14 @@
 #include <vector>
 #include <utility>
 
-#include "TimeMark.hpp"
+#include "TimeMark.h"
 
 #include "DetectFacesStage.h"
 
 #include "ThreadPool.h"
 #include "SharedQueue.h"
+
+#include "Scheduler.h"
 
 const uint32_t IN_BUFFER_SIZE = 16;
 const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
@@ -64,13 +66,21 @@ int main(int argc, char**argv) {
 
     std::cout << "Start grabbing" << std::endl;
 
+    ThreadPool pool(MAX_THREAD);
     std::shared_ptr<SharedQueue<cv::Mat>> inFrames(new SharedQueue<cv::Mat>());
     std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects(new SharedQueue<DetectedFacesResult>());
-    DetectFacesStage detectFacesStage(inFrames, outRects);
-    ThreadPool pool(MAX_THREAD);
 
-    clock_t lastTime20 = clock();
-    clock_t lastTime50 = lastTime20;
+    // Responsible of detecting faces, needs in frames, and ouputs out rectangles
+    DetectFacesStage detectFacesStage(inFrames, outRects);
+
+    // Used to periodically push the detectFacesStage in the threadPool, and also schedule the various detectors
+    // into the detectFacesStage
+    Scheduler scheduler;
+    scheduler.addFunc([&](){ if (pool.queue_size() < MAX_THREAD) pool.push(std::ref(detectFacesStage));
+        }, 0.05, 0.05);
+    long firstId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(firstDetector); }, 0.2, 0.1);
+    long secondId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(secondDetector); }, 0.5, 0.1);
+
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     cv::Mat frame;
     DetectedFacesResult rectsToDraw;
@@ -100,26 +110,7 @@ int main(int argc, char**argv) {
         }
 
         if (multithread) {
-            clock_t currTime = clock();
-            clock_t elapsed20 = currTime - lastTime20;
-            clock_t elapsed50 = currTime - lastTime50;
-
-            if (elapsed20 / CLOCKS_PER_SEC > 0.20) {
-                lastTime20 = currTime;
-                detectFacesStage.schedNextDetector(firstDetector);
-            }
-
-            if (elapsed50 / CLOCKS_PER_SEC > 0.50) {
-                lastTime50 = currTime;
-                detectFacesStage.schedNextDetector(secondDetector);
-            }
-
-            //thread pool takes frame from inFrames and output to outFrames
-            //there is actually a queue in pool, that take what you push
-            //in order. But I don't want to grow the queue infintely
-            if (pool.queue_size() < MAX_THREAD) {
-                pool.push(std::ref(detectFacesStage));
-            }
+            scheduler.schedule();
         } else {
             detectFacesStage(0);
         }

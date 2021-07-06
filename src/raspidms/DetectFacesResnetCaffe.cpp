@@ -1,6 +1,6 @@
 #include "DetectFacesResnetCaffe.h"
 
-#include "TimeMark.hpp"
+#include "TimeMark.h"
 
 #include <opencv2/core.hpp>
 #include <opencv2/objdetect.hpp>
@@ -10,14 +10,16 @@
 
 DetectFacesResnetCaffe::DetectFacesResnetCaffe(const std::string & protoTxtPath, const std::string & caffeModelPath)
     : IDetectFaces(protoTxtPath, caffeModelPath),
-      m_net(cv::dnn::readNetFromCaffe(protoTxtPath, caffeModelPath))
+      m_net(cv::dnn::readNetFromCaffe(protoTxtPath, caffeModelPath)),
+      m_id(getUniqueId())
 {
 
 }
 
 DetectedFacesResult DetectFacesResnetCaffe::operator()(cv::Mat frame) {
+    std::cout << "resnetCaffe" << std::endl;
     double confThreshold = 0.5;
-    timeMark();
+    timeMark(m_id);
     std::vector<cv::Rect> faces;
 
     if(frame.empty())
@@ -59,5 +61,5 @@ DetectedFacesResult DetectFacesResnetCaffe::operator()(cv::Mat frame) {
         }
     }
 
-    return std::make_pair(faces, timeMark());
+    return std::make_pair(faces, timeMark(m_id));
 }

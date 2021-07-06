@@ -8,6 +8,9 @@ class DetectFacesEmpty : public IDetectFaces
 public:
     DetectFacesEmpty(const std::string & path = std::string());
     DetectedFacesResult operator()(cv::Mat frame);
+
+private:
+    const long m_id;
 };
 
 #endif // DETECTFACESEMPTY_H
