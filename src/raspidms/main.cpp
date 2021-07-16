@@ -27,6 +27,8 @@
 
 #include "DetectFacesStage.h"
 
+#include "FaceFeaturesDlib.h"
+
 #include "ThreadPool.h"
 #include "SharedQueue.h"
 
@@ -67,8 +69,16 @@ int main(int argc, char**argv) {
     std::cout << "Start grabbing" << std::endl;
 
     ThreadPool pool(MAX_THREAD);
+
+    // In queue of frames
     std::shared_ptr<SharedQueue<cv::Mat>> inFrames(new SharedQueue<cv::Mat>());
+
+    // Out queue of rects to draw
     std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects(new SharedQueue<DetectedFacesResult>());
+
+    // Stuff to be drawn
+    DetectedFacesResult rectsToDraw;
+    FaceFeaturesResult featuresToDraw;
 
     // Responsible of detecting faces, needs in frames, and ouputs out rectangles
     DetectFacesStage detectFacesStage(inFrames, outRects);
@@ -81,9 +91,22 @@ int main(int argc, char**argv) {
     long firstId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(firstDetector); }, 0.2, 0.1);
     long secondId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(secondDetector); }, 0.5, 0.1);
 
+    FaceFeaturesDlib faceFeaturesDetector("../res/shape_predictor_68_face_landmarks.dat");
+
+    //TODO replace function pushed in pool with a FaceFeaturesStage class
+    scheduler.addFunc([&]() {
+        pool.push([&](int id) {
+            //Don't wait for frame, there should be plenty
+            cv::Mat frame;
+            if(! inFrames->pop_front_no_wait(frame))
+                return;
+
+            featuresToDraw = faceFeaturesDetector(frame, rectsToDraw.first);
+        });
+    }, 0.1, 0.1);
+
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     cv::Mat frame;
-    DetectedFacesResult rectsToDraw;
     for(;;)
     {
         if (cv::pollKey() >= 0) {
@@ -125,6 +148,12 @@ int main(int argc, char**argv) {
                       cv::Point(rect.x + rect.width, rect.y + rect.height),
                       cv::Scalar(255, 0, 0),
                       3, 8, 0);
+        }
+
+        for(const auto & vecpoints : featuresToDraw.first) {
+            for(const auto & point : vecpoints) {
+                circle(frame, point, 4, cv::Scalar(0, 0, 255), cv::FILLED, cv::LINE_8);
+            }
         }
 
         cv::imshow("Head", frame);

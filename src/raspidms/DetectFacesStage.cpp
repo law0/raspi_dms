@@ -11,7 +11,7 @@ DetectFacesStage::DetectFacesStage(std::shared_ptr<SharedQueue<cv::Mat>> inFrame
 }
 
 void DetectFacesStage::operator()(int threadId) {
-    std::cout << "thread id " << threadId << std::endl;
+    //std::cout << "thread id " << threadId << std::endl;
 
     std::shared_ptr<IDetectFaces> detector = getNextDetector(threadId);
 
