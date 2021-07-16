@@ -28,8 +28,7 @@ public:
      * - a vector of rectangles of faces (upleft, upright, w, h)
      * - a double : time in second it took for computing
      */
-    //TODO consider no copy
-    virtual DetectedFacesResult operator()(cv::Mat frame) = 0;
+    virtual DetectedFacesResult operator()(const cv::Mat& frame) = 0;
 
 protected:
     const std::string m_path;

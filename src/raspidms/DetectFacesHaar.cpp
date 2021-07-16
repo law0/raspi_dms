@@ -16,7 +16,7 @@ DetectFacesHaar::DetectFacesHaar(const std::string & path) :
 
 }
 
-DetectedFacesResult DetectFacesHaar::operator()(cv::Mat frame) {
+DetectedFacesResult DetectFacesHaar::operator()(const cv::Mat & frame) {
     std::cout << "haar" << std::endl;
     timeMark(m_id);
     cv::Mat frameCopy = frame.clone();

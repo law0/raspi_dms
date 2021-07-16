@@ -7,7 +7,7 @@ class DetectFacesResnetCaffe : public IDetectFaces
 {
 public:
     DetectFacesResnetCaffe(const std::string & protoTxtPath, const std::string & caffeModelPath);
-    DetectedFacesResult operator()(cv::Mat frame);
+    DetectedFacesResult operator()(const cv::Mat & frame);
 
 private:
 

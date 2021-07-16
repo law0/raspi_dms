@@ -7,7 +7,7 @@ class DetectFacesMyYolo : public IDetectFaces
 {
 public:
     DetectFacesMyYolo(const std::string & path);
-    DetectedFacesResult operator()(cv::Mat frame);
+    DetectedFacesResult operator()(const cv::Mat & frame);
 
 private:
     //warning dnn::Net seems not reentrant

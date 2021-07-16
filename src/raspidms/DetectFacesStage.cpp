@@ -19,7 +19,6 @@ void DetectFacesStage::operator()(int threadId) {
     if (m_outRects->size() >= OUT_RECT_BUFFER_SIZE)
         return;
 
-    //TODO consider no copy
     //Don't wait for frame, there should be plenty
     cv::Mat frame;
     if(! m_inFrames->pop_front_no_wait(frame))

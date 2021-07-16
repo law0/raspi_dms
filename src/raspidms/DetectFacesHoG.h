@@ -16,7 +16,7 @@ class DetectFacesHoG : public IDetectFaces
 {
 public:
     DetectFacesHoG(const std::string & path = std::string());
-    DetectedFacesResult operator()(cv::Mat frame);
+    DetectedFacesResult operator()(const cv::Mat & frame);
 
     static cv::Rect dlibRectangleToOpenCV(dlib::rectangle r);
     static dlib::rectangle openCVRectToDlib(cv::Rect r);

@@ -17,7 +17,7 @@ DetectFacesMyYolo::DetectFacesMyYolo(const std::string & path) :
 
 }
 
-DetectedFacesResult DetectFacesMyYolo::operator()(cv::Mat frame) {
+DetectedFacesResult DetectFacesMyYolo::operator()(const cv::Mat & frame) {
     std::cout << "yolo" << std::endl;
     float confThreshold = 0.5;
     float classThreshold = 0.5;
