@@ -1,4 +1,9 @@
+#ifndef UTILS_H
+#define UTILS_H
+
 #include <opencv2/opencv.hpp>
+
+#include <dlib/geometry/rectangle.h>
 
 #include <map>
 #include <mutex>
@@ -8,7 +13,7 @@
  * @param update, set to false if you don't want to update the internal time upon call of timeMark
  * @return For a same id given, time in seconds since boot the first time, time since last call the next times
  */
-double inline timeMark(long id=0, bool update=true) {
+inline double timeMark(long id=0, bool update=true) {
     static std::map<long, double> timeMap;
     static std::mutex mutex;
 
@@ -31,7 +36,29 @@ double inline timeMark(long id=0, bool update=true) {
  * @brief getUniqueId
  * @return a unique id each time it is called (increment), useful to call timeMark later on
  */
-long inline getUniqueId() {
+inline long getUniqueId() {
     static long t = 0;
     return t++;
 }
+
+/**
+ * @brief dlibRectangleToOpenCV
+ * @param r dlib rectangle
+ * @return an OpenCV rectangle converted from the dlib rectangle passed as param
+ */
+inline cv::Rect dlibRectangleToOpenCV(const dlib::rectangle & r)
+{
+    return cv::Rect(cv::Point2i(r.left(), r.top()), cv::Point2i(r.right() + 1, r.bottom() + 1));
+}
+
+/**
+ * @brief openCVRectangleToDlib
+ * @param r OpenCV rectangle
+ * @return an dlib rectangle converted from the OpenCV rectangle passed as param
+ */
+inline dlib::rectangle openCVRectangleToDlib(const cv::Rect & r)
+{
+    return dlib::rectangle((long)r.tl().x, (long)r.tl().y, (long)r.br().x - 1, (long)r.br().y - 1);
+}
+
+#endif // UTILS_H

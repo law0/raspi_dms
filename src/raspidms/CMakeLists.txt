@@ -4,8 +4,14 @@ project (raspidms)
 
 add_subdirectory(../dlib dlib_build)
 
+#avoid warning messages of type
+#parameter passing has changed in GCC 7.1
+set(GCC_NO_WARN_FLAGS "-Wno-psabi")
+
 file(GLOB SOURCES "*.cpp")
 add_executable(raspidms ${SOURCES})
+
+add_definitions(${GCC_NO_WARN_FLAGS})
 
 find_package(PkgConfig REQUIRED)
 

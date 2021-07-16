@@ -1,6 +1,6 @@
 #include "DetectFacesHoG.h"
 
-#include "TimeMark.h"
+#include "Utils.h"
 
 #include <dlib/opencv/cv_image.h>
 
@@ -10,16 +10,6 @@ DetectFacesHoG::DetectFacesHoG(const std::string & path)
       m_id(getUniqueId())
 {
 
-}
-
-cv::Rect DetectFacesHoG::dlibRectangleToOpenCV(dlib::rectangle r)
-{
-    return cv::Rect(cv::Point2i(r.left(), r.top()), cv::Point2i(r.right() + 1, r.bottom() + 1));
-}
-
-dlib::rectangle DetectFacesHoG::openCVRectToDlib(cv::Rect r)
-{
-  return dlib::rectangle((long)r.tl().x, (long)r.tl().y, (long)r.br().x - 1, (long)r.br().y - 1);
 }
 
 DetectedFacesResult DetectFacesHoG::operator()(const cv::Mat & frame) {
@@ -42,7 +32,7 @@ DetectedFacesResult DetectFacesHoG::operator()(const cv::Mat & frame) {
 
     //to openCV rect and rescale
     std::for_each(dets.begin(), dets.end(), [&](dlib::rectangle r) {
-        cv::Rect cvRect = DetectFacesHoG::dlibRectangleToOpenCV(r);
+        cv::Rect cvRect = dlibRectangleToOpenCV(r);
         cvRect.x /= scale_x;
         cvRect.y /= scale_y;
         cvRect.width /= scale_x;

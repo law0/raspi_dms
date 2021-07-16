@@ -1,6 +1,6 @@
 #include "DetectFacesEmpty.h"
 
-#include "TimeMark.h"
+#include "Utils.h"
 
 DetectFacesEmpty::DetectFacesEmpty(const std::string & path) : IDetectFaces(path), m_id(getUniqueId())
 {

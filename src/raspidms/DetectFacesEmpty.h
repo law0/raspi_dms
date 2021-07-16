@@ -7,7 +7,7 @@ class DetectFacesEmpty : public IDetectFaces
 {
 public:
     DetectFacesEmpty(const std::string & path = std::string());
-    DetectedFacesResult operator()(const cv::Mat & frame);
+    virtual DetectedFacesResult operator()(const cv::Mat & frame) override;
 
 private:
     const long m_id;
