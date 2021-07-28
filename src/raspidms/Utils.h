@@ -61,4 +61,10 @@ inline dlib::rectangle openCVRectangleToDlib(const cv::Rect & r)
     return dlib::rectangle((long)r.tl().x, (long)r.tl().y, (long)r.br().x - 1, (long)r.br().y - 1);
 }
 
+template<typename T>
+struct ref_trait {
+    inline std::reference_wrapper<T> ref() { return std::ref(*static_cast<T*>(this)); }
+    inline std::reference_wrapper<const T> cref() { return std::cref(*static_cast<T*>(this)); }
+};
+
 #endif // UTILS_H

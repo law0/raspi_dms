@@ -76,7 +76,7 @@ int main(int argc, char**argv) {
     // Used to periodically push the detectFacesStage in the threadPool, and also schedule the various detectors
     // into the detectFacesStage
     Scheduler scheduler;
-    scheduler.addFunc([&](){ if (pool.queue_size() < MAX_THREAD) pool.push(std::ref(detectFacesStage));
+    scheduler.addFunc([&](){ if (pool.queue_size() < MAX_THREAD) pool.push(detectFacesStage.ref());
         }, 0.05, 0.05);
     long firstId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(firstDetector); }, 0.2, 0.1);
     long secondId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(secondDetector); }, 0.5, 0.1);

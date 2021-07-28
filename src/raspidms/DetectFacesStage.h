@@ -15,6 +15,8 @@
 #include "IDetectFaces.h"
 #include "SharedQueue.h"
 
+#include "Utils.h"
+
 const int OUT_RECT_BUFFER_SIZE = 4;
 const int MAX_CONCURRENT_DETECTORS = 4;
 
@@ -24,11 +26,25 @@ const std::string RESNET_CAFFE_MODEL_PATH = "../res/Res10_300x300_SSD_iter_14000
 const std::string MY_YOLO_RESNET_18_PATH = "../res/YoloResnet18.onnx";
 const std::string MY_YOLO_EFFNET_B0_PATH = "../res/YoloEffnetb0.onnx";
 
-class DetectFacesStage {
+class DetectFacesStage : public ref_trait<DetectFacesStage> {
 
 public:
     DetectFacesStage(std::shared_ptr<SharedQueue<cv::Mat>> inFrames, std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects);
+
+    // Copying a stage seems wrong, because the
+    // behaviour of operator(), which makes this a functor,
+    // is ambiguous :
+    // Do you want to call on all copies, or just this one ?
+    // 
+    // This is not a Singleton either, we may want to create
+    // different instance of a stage (e.g to call in parallel)
+    //
+    // If you want to share the stage as a function (reference)
+    // use ref() (from ref_trait)
     DetectFacesStage(const DetectFacesStage&) = delete;
+
+    // I don't see example where moving from it is a good idea either
+    DetectFacesStage(DetectFacesStage&&) = delete;
 
     /**
      * @brief operator ()
