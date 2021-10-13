@@ -26,8 +26,10 @@
 #include "Utils.h"
 
 #include "DetectFacesStage.h"
+#include "FaceFeaturesStage.h"
 
-#include "FaceFeaturesDlib.h"
+//#include "FaceFeaturesDlib.h"
+
 
 #include "ThreadPool.h"
 #include "SharedQueue.h"
@@ -35,6 +37,8 @@
 #include "Scheduler.h"
 
 const uint32_t IN_BUFFER_SIZE = 16;
+const uint32_t RECTS_BUFFER_SIZE = 10;
+const uint32_t FACE_FEATURES_BUFFER_SIZE = 5;
 const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
 
 void printHelp () {
@@ -52,7 +56,6 @@ int main(int argc, char**argv) {
     const bool multithread = true;
     const std::string video_path(argv[1]);
     const std::string firstDetector = argc > 2 ? argv[2] : "";
-    const std::string secondDetector = argc > 3 ? argv[3] : "";
 
     cv::VideoCapture cap;
 
@@ -68,58 +71,49 @@ int main(int argc, char**argv) {
 
     std::cout << "Start grabbing" << std::endl;
 
-    ThreadPool pool(MAX_THREAD);
-
     // In queue of frames
-    std::shared_ptr<SharedQueue<cv::Mat>> inFrames(new SharedQueue<cv::Mat>());
+    std::shared_ptr<SharedQueue<cv::Mat>> inputFrameQueue(new SharedQueue<cv::Mat>());
 
-    // Out queue of rects to draw
-    std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects(new SharedQueue<DetectedFacesResult>());
+    // Out queue of rects to draw (and region of interests for feature detection)
+    std::shared_ptr<SharedQueue<DetectedFacesResult>> rectsQueue(new SharedQueue<DetectedFacesResult>());
 
-    // Stuff to be drawn
-    DetectedFacesResult rectsToDraw;
-    FaceFeaturesResult featuresToDraw;
+    // Face feature to be drawn
+    std::shared_ptr<SharedQueue<FaceFeaturesResult>> faceFeaturesQueue(new SharedQueue<FaceFeaturesResult>());
 
     // Responsible of detecting faces, needs in frames, and ouputs out rectangles
-    DetectFacesStage detectFacesStage(inFrames, outRects);
+    DetectFacesStage detectFacesStage(firstDetector, inputFrameQueue, rectsQueue);
 
-    // Used to periodically push the detectFacesStage in the threadPool, and also schedule the various detectors
-    // into the detectFacesStage
+    // Responsible for detecting face feature (landmarks)
+    FaceFeaturesStage faceFeaturesStage("dlib_68", inputFrameQueue, rectsQueue, faceFeaturesQueue);
+
     Scheduler scheduler;
-    scheduler.addFunc([&](){ if (pool.queue_size() < MAX_THREAD) pool.push(std::ref(detectFacesStage));
-        }, 0.05, 0.05);
-    long firstId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(firstDetector); }, 0.2, 0.1);
-    long secondId = scheduler.addFunc([&](){ detectFacesStage.schedNextDetector(secondDetector); }, 0.5, 0.1);
+    scheduler.addFunc(std::ref(detectFacesStage), 0.3, 0.1);
+    scheduler.addFunc(std::ref(faceFeaturesStage), 0.3, 0.05);
 
-    FaceFeaturesDlib faceFeaturesDetector("../res/shape_predictor_68_face_landmarks.dat");
+    // To avoid interblocking no stages uses a "pop_" function
+    // This act as a sink
+    scheduler.addFunc([&](int) {
+        // lose frames if too slow
+        if (inputFrameQueue->size() >= IN_BUFFER_SIZE)
+            inputFrameQueue->pop_front_no_wait();
 
-    //TODO replace function pushed in pool with a FaceFeaturesStage class
-    scheduler.addFunc([&]() {
-        pool.push([&](int id) {
-            //Don't wait for frame, there should be plenty
-            cv::Mat frame;
-            if(! inFrames->pop_front_no_wait(frame))
-                return;
+        if (rectsQueue->size() > RECTS_BUFFER_SIZE)
+            rectsQueue->pop_front_no_wait();
 
-            featuresToDraw = faceFeaturesDetector(frame, rectsToDraw.first);
-        });
-    }, 0.1, 0.1);
+        if (faceFeaturesQueue->size() > FACE_FEATURES_BUFFER_SIZE)
+            faceFeaturesQueue->pop_front_no_wait();
+
+    }, 0.05, 0.05);
 
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     cv::Mat frame;
     for(;;)
     {
         if (cv::pollKey() >= 0) {
-            pool.stop();
             break;
         }
 
-        // lose frames if too slow
-        if (inFrames->size() >= IN_BUFFER_SIZE) {
-            inFrames->pop_front_no_wait();
-        }
-
-        if (inFrames->size() < IN_BUFFER_SIZE) {
+        if (inputFrameQueue->size() < IN_BUFFER_SIZE) {
             // wait for a new frame from camera and store it into 'frame'
             cap.read(frame);
             // check if we succeeded
@@ -129,30 +123,32 @@ int main(int argc, char**argv) {
             }
 
             //TODO consider no copy
-            inFrames->push_back(frame);
+            inputFrameQueue->push_back(frame);
         }
 
         if (multithread) {
             scheduler.schedule();
         } else {
             detectFacesStage(0);
+            faceFeaturesStage(0);
         }
 
         DetectedFacesResult rects;
-        if (outRects->pop_front_no_wait(rects) && rects.first.size() > 0) {
-            rectsToDraw = rects;
+        if (rectsQueue->front_no_wait(rects) && rects.first.size() > 0) {
+            for(const auto & rect : rects.first) {
+                rectangle(frame, cv::Point(rect.x, rect.y),
+                          cv::Point(rect.x + rect.width, rect.y + rect.height),
+                          cv::Scalar(255, 0, 0),
+                          3, 8, 0);
+            }
         }
 
-        for(const auto & rect : rectsToDraw.first) {
-            rectangle(frame, cv::Point(rect.x, rect.y),
-                      cv::Point(rect.x + rect.width, rect.y + rect.height),
-                      cv::Scalar(255, 0, 0),
-                      3, 8, 0);
-        }
-
-        for(const auto & vecpoints : featuresToDraw.first) {
-            for(const auto & point : vecpoints) {
-                circle(frame, point, 4, cv::Scalar(0, 0, 255), cv::FILLED, cv::LINE_8);
+        FaceFeaturesResult faceFeatures;
+        if (faceFeaturesQueue->front_no_wait(faceFeatures) && faceFeatures.first.size() > 0) {
+            for(const auto & vecpoints : faceFeatures.first) {
+                for(const auto & point : vecpoints) {
+                    circle(frame, point, 4, cv::Scalar(0, 0, 255), cv::FILLED, cv::LINE_8);
+                }
             }
         }
 

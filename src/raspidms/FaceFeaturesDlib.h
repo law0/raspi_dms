@@ -10,7 +10,7 @@ public:
     FaceFeaturesDlib(const std::string & path);
 
     virtual FaceFeaturesResult operator()(const cv::Mat & frame,
-                                          std::vector<cv::Rect> roi) override;
+                                          std::vector<cv::Rect>& roi) override;
 
 
 private:

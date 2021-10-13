@@ -5,16 +5,19 @@
 #include <map>
 #include <tuple>
 
-typedef std::function<void()> SchedFunc;
+#include "ThreadPool.h"
+
+typedef std::function<void(int)> SchedFunc;
 
 class Scheduler
 {
 public:
     Scheduler();
+    ~Scheduler();
 
     /**
      * @brief addFunc add a function func that will be called every maxTime by this scheduler
-     * func can also be called upon call of triggerFunc below, unless minTime has not elapsed
+     * func. Can also be called upon call of triggerFunc below, unless minTime has not elapsed
      * @param func
      * @param maxTime
      * @param minTime
@@ -39,7 +42,7 @@ public:
     bool removeFunc(long id);
 
     /**
-     * @brief schedule, need to be check periodically for this Scheduler to work
+     * @brief schedule, need to be called periodically for this Scheduler to work
      */
     void schedule();
 
@@ -51,6 +54,7 @@ private:
     } SchedFuncPack;
 
     std::map<long, SchedFuncPack> m_map;
+    ThreadPool m_threadPool;
 };
 
 #endif // SCHEDULER_H

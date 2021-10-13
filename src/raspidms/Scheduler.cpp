@@ -6,9 +6,13 @@
 #include "Utils.h"
 
 
-Scheduler::Scheduler() : m_map()
+Scheduler::Scheduler() : m_map(), m_threadPool(std::thread::hardware_concurrency())
 {
 
+}
+
+Scheduler::~Scheduler() {
+    m_threadPool.stop();
 }
 
 long Scheduler::addFunc(SchedFunc func, double maxTime, double minTime) {
@@ -28,8 +32,12 @@ bool Scheduler::triggerFunc(long id) {
     if (m_map.count(id) == 0)
         return false;
 
-    if (m_map[id].minTime < timeMark(id, false))
-        m_map[id].func();
+    if (m_map[id].minTime < timeMark(id, false)) {
+        if (m_threadPool.n_idle() > 0)
+            m_threadPool.push(std::ref(m_map[id].func));
+        else
+            return false;
+    }
 
     return true;
 }
@@ -50,8 +58,10 @@ void Scheduler::schedule() {
         SchedFuncPack& pack = pairIt.second;
         double time = timeMark(id, false);
         if (pack.minTime < time && pack.maxTime < time) {
-            pack.func();
-            timeMark(id);
+            if (m_threadPool.n_idle() > 0) {
+                m_threadPool.push(std::ref(pack.func));
+                timeMark(id);
+            }
         }
     }
 }

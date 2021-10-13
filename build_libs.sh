@@ -69,10 +69,11 @@ cp cv2.cpython-36m-x86_64-linux-gnu.so cv2.so
 
 # Pkgconfig
 cd $LOCAL_PWD
-echo "libdir = ${FINAL}/opencv-4.5.2/lib" > ${PKGCONFIG}/opencv.pc
-echo "includedir = ${FINAL}/opencv-4.5.2/include/opencv4" >> ${PKGCONFIG}/opencv.pc
-echo >> ${PKGCONFIG}/opencv.pc
-cat ${SRC}/opencv_pkgconfig-4.5.2/opencv.pc.part >> ${PKGCONFIG}/opencv.pc
+#echo "libdir = ${FINAL}/opencv-4.5.2/lib" > ${PKGCONFIG}/opencv.pc
+#echo "includedir = ${FINAL}/opencv-4.5.2/include/opencv4" >> ${PKGCONFIG}/opencv.pc
+#echo >> ${PKGCONFIG}/opencv.pc
+#cat ${SRC}/opencv_pkgconfig-4.5.2/opencv.pc.part >> ${PKGCONFIG}/opencv.pc
+cp ./opencv.pc ${PKGCONFIG}/opencv.pc
 
 # Tar
 cd ${FINAL}

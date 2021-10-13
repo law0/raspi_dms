@@ -12,6 +12,6 @@ DetectedFacesResult DetectFacesEmpty::operator()(const cv::Mat & frame) {
 
     (void)frame;
     std::vector<cv::Rect> faces;
-
+    std::cerr << "Warning: using DetectFacesEmpty" << std::endl;
     return std::make_pair(faces, timeMark(m_id));
 }

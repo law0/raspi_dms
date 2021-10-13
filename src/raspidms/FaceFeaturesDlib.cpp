@@ -16,7 +16,7 @@ FaceFeaturesDlib::FaceFeaturesDlib(const std::string & path)
 }
 
 FaceFeaturesResult FaceFeaturesDlib::operator()(const cv::Mat & frame,
-                                                std::vector<cv::Rect> roi) {
+                                                std::vector<cv::Rect>& roi) {
 
     timeMark(m_id);
     cv::Mat frameCopy = frame.clone();

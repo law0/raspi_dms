@@ -31,7 +31,7 @@ public:
      * - a double : time in second it took for computing
      */
     virtual FaceFeaturesResult operator()(const cv::Mat & frame,
-                                     std::vector<cv::Rect> regionOfInterests) = 0;
+                                     std::vector<cv::Rect>& regionOfInterests) = 0;
 
 protected:
     const std::string m_path;
