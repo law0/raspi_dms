@@ -2,7 +2,8 @@
 #define SCHEDULER_H
 
 #include <functional>
-#include <map>
+#include <list>
+#include <unordered_map>
 #include <tuple>
 
 #include "ThreadPool.h"
@@ -53,7 +54,11 @@ private:
         double minTime;
     } SchedFuncPack;
 
-    std::map<long, SchedFuncPack> m_map;
+    // map of SchedFuncPack
+    std::unordered_map<long /*id*/, SchedFuncPack> m_funcMap;
+
+    // id sorted by decreasing max time
+    std::list<std::pair<double /*maxTime*/, long /*id*/>> m_timeIdList;
     ThreadPool m_threadPool;
 };
 

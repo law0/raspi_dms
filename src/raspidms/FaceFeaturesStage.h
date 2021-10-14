@@ -30,7 +30,6 @@ public:
 
     /**
      * override void IStage::operator()(int);
-     * CONSUMES DetectedFacesResult in regionOfInterests SharedQueue
      */
     virtual void operator()(int threadId) override;
 

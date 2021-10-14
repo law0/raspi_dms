@@ -37,8 +37,6 @@
 #include "Scheduler.h"
 
 const uint32_t IN_BUFFER_SIZE = 16;
-const uint32_t RECTS_BUFFER_SIZE = 10;
-const uint32_t FACE_FEATURES_BUFFER_SIZE = 5;
 const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
 
 void printHelp () {
@@ -87,23 +85,12 @@ int main(int argc, char**argv) {
     FaceFeaturesStage faceFeaturesStage("dlib_68", inputFrameQueue, rectsQueue, faceFeaturesQueue);
 
     Scheduler scheduler;
-    scheduler.addFunc(std::ref(detectFacesStage), 0.3, 0.1);
-    scheduler.addFunc(std::ref(faceFeaturesStage), 0.3, 0.05);
 
-    // To avoid interblocking no stages uses a "pop_" function
-    // This act as a sink
-    scheduler.addFunc([&](int) {
-        // lose frames if too slow
-        if (inputFrameQueue->size() >= IN_BUFFER_SIZE)
-            inputFrameQueue->pop_front_no_wait();
+    scheduler.addFunc(std::ref(detectFacesStage), 0.5, 0.1);
+    scheduler.addFunc(std::ref(faceFeaturesStage), 0.1, 0.1);
 
-        if (rectsQueue->size() > RECTS_BUFFER_SIZE)
-            rectsQueue->pop_front_no_wait();
-
-        if (faceFeaturesQueue->size() > FACE_FEATURES_BUFFER_SIZE)
-            faceFeaturesQueue->pop_front_no_wait();
-
-    }, 0.05, 0.05);
+    DetectedFacesResult rects;
+    FaceFeaturesResult faceFeatures;
 
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     cv::Mat frame;
@@ -112,6 +99,10 @@ int main(int argc, char**argv) {
         if (cv::pollKey() >= 0) {
             break;
         }
+
+        // lose frames if too slow
+        if (inputFrameQueue->size() >= IN_BUFFER_SIZE)
+            inputFrameQueue->pop_front_no_wait();
 
         if (inputFrameQueue->size() < IN_BUFFER_SIZE) {
             // wait for a new frame from camera and store it into 'frame'
@@ -133,8 +124,11 @@ int main(int argc, char**argv) {
             faceFeaturesStage(0);
         }
 
-        DetectedFacesResult rects;
-        if (rectsQueue->front_no_wait(rects) && rects.first.size() > 0) {
+        DetectedFacesResult dfr;
+        if (rectsQueue->front_no_wait(dfr) && dfr.first.size() > 0)
+            rects = dfr;
+
+        if (rects.first.size() > 0) {
             for(const auto & rect : rects.first) {
                 rectangle(frame, cv::Point(rect.x, rect.y),
                           cv::Point(rect.x + rect.width, rect.y + rect.height),
@@ -143,8 +137,11 @@ int main(int argc, char**argv) {
             }
         }
 
-        FaceFeaturesResult faceFeatures;
-        if (faceFeaturesQueue->front_no_wait(faceFeatures) && faceFeatures.first.size() > 0) {
+        FaceFeaturesResult ffr;
+        if (faceFeaturesQueue->front_no_wait(ffr) && ffr.first.size() > 0)
+            faceFeatures = ffr;
+
+        if (faceFeatures.first.size() > 0) {
             for(const auto & vecpoints : faceFeatures.first) {
                 for(const auto & point : vecpoints) {
                     circle(frame, point, 4, cv::Scalar(0, 0, 255), cv::FILLED, cv::LINE_8);

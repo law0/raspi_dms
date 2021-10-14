@@ -6,6 +6,8 @@
 #include "DetectFacesResnetCaffe.h"
 #include "DetectFacesHoG.h"
 
+const size_t MAX_OUT_QUEUE_SIZE = 4;
+
 DetectFacesStage::DetectFacesStage(const std::string& detectorName,
                                    std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
                                    std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects)
@@ -19,7 +21,7 @@ DetectFacesStage::DetectFacesStage(const std::string& detectorName,
 }
 
 void DetectFacesStage::operator()(int threadId) {
-    //std::cout << "thread id " << threadId << std::endl;
+    std::cout << "DetectFacesStage thread id " << threadId << std::endl;
     std::shared_ptr<IDetectFaces> detector = getNextDetector(threadId);
 
     //Don't wait for frame, there should be plenty
@@ -31,6 +33,9 @@ void DetectFacesStage::operator()(int threadId) {
 
     // Detect the faces
     m_outRects->push_back((*detector)(frame));
+
+    if (m_outRects->size() > MAX_OUT_QUEUE_SIZE)
+        m_outRects->pop_front_no_wait();
 }
 
 std::shared_ptr<IDetectFaces> DetectFacesStage::getNextDetector(int threadId) {

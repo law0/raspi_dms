@@ -40,7 +40,7 @@ public:
     void push_back(const T& item);
     void push_back(T&& item);
 
-    int size();
+    size_t size();
     bool empty();
 
 private:
@@ -128,10 +128,10 @@ void SharedQueue<T>::push_back(T&& item)
 }
 
 template <typename T>
-int SharedQueue<T>::size()
+size_t SharedQueue<T>::size()
 {
     std::unique_lock<std::mutex> mlock(m_mutex);
-    int size = m_queue.size();
+    size_t size = m_queue.size();
     mlock.unlock();
     return size;
 }

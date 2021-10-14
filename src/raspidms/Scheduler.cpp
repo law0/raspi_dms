@@ -6,7 +6,7 @@
 #include "Utils.h"
 
 
-Scheduler::Scheduler() : m_map(), m_threadPool(std::thread::hardware_concurrency())
+Scheduler::Scheduler() : m_funcMap(), m_threadPool(std::thread::hardware_concurrency())
 {
 
 }
@@ -24,17 +24,24 @@ long Scheduler::addFunc(SchedFunc func, double maxTime, double minTime) {
         return LONG_MIN;
     }
     long id = getUniqueId();
-    m_map.insert({id, {func, maxTime, minTime}});
+    m_funcMap.insert({id, {func, maxTime, minTime}});
+
+    auto it = m_timeIdList.begin();
+
+    while (it != m_timeIdList.end() && maxTime <= it->first) { ++it; }
+
+    m_timeIdList.insert(it, {maxTime, id});
+
     return id;
 }
 
 bool Scheduler::triggerFunc(long id) {
-    if (m_map.count(id) == 0)
+    if (m_funcMap.count(id) == 0)
         return false;
 
-    if (m_map[id].minTime < timeMark(id, false)) {
+    if (m_funcMap[id].minTime < timeMark(id, false)) {
         if (m_threadPool.n_idle() > 0)
-            m_threadPool.push(std::ref(m_map[id].func));
+            m_threadPool.push(std::ref(m_funcMap[id].func));
         else
             return false;
     }
@@ -43,24 +50,36 @@ bool Scheduler::triggerFunc(long id) {
 }
 
 bool Scheduler::removeFunc(long id) {
-    auto elemIt = m_map.find(id);
+    auto elemIt = m_funcMap.find(id);
 
-    if (elemIt == m_map.end())
+    if (elemIt == m_funcMap.end())
         return false;
 
-    m_map.erase(elemIt);
+    m_funcMap.erase(elemIt);
     return true;
 }
 
 void Scheduler::schedule() {
-    for(auto& pairIt : m_map) {
-        long id = pairIt.first;
-        SchedFuncPack& pack = pairIt.second;
-        double time = timeMark(id, false);
-        if (pack.minTime < time && pack.maxTime < time) {
-            if (m_threadPool.n_idle() > 0) {
-                m_threadPool.push(std::ref(pack.func));
-                timeMark(id);
+    long id;
+    for (auto& pTimeId : m_timeIdList) {
+        id = pTimeId.second;
+        if (m_funcMap.count(id) == 0) {
+            // should never happen
+            abort();
+        } else {
+            SchedFuncPack& pack = m_funcMap[id];
+            if (pack.maxTime < timeMark(id, false)) {
+                if (m_threadPool.queue_size() < 2) { // let's charge a little
+                    std::cout << "Pushing maxTime=" << pack.maxTime << std::endl;
+                    m_threadPool.push(std::ref(pack.func));
+                    timeMark(id);
+                } else {
+                    // m_timeIdVec being sorted by decreasing time
+                    // it makes bigger maxTime prioritary
+                    // (if bigger maxTime can't run, then lesser maxTime are not ran
+                    // to avoid fill the all the thread)
+                    break;
+                }
             }
         }
     }

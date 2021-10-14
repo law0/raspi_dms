@@ -2,6 +2,8 @@
 #include "FaceFeatureEmpty.h"
 #include "FaceFeaturesStage.h"
 
+const size_t MAX_OUT_QUEUE_SIZE = 2;
+
 FaceFeaturesStage::FaceFeaturesStage(const std::string& detectorName,
                                      std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
                                      std::shared_ptr<SharedQueue<DetectedFacesResult>> regionOfInterests,
@@ -16,7 +18,7 @@ FaceFeaturesStage::FaceFeaturesStage(const std::string& detectorName,
 }
 
 void FaceFeaturesStage::operator()(int threadId) {
-    //std::cout << "thread id " << threadId << std::endl;
+    std::cout << "FaceFeaturesStage thread id " << threadId << std::endl;
     std::shared_ptr<IFaceFeatures> detector = getNextDetector(threadId);
 
     //Don't wait for frame, there should be plenty
@@ -32,9 +34,11 @@ void FaceFeaturesStage::operator()(int threadId) {
         return;
     }
 
-    // Detect the faces
+    // Detect the faces features
     m_outFaceFeatures->push_back((*detector)(frame, dfr.first));
 
+    if (m_outFaceFeatures->size() > MAX_OUT_QUEUE_SIZE)
+        m_outFaceFeatures->pop_front_no_wait();
 }
 
 
