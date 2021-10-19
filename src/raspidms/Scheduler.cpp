@@ -60,6 +60,9 @@ bool Scheduler::removeFunc(long id) {
 }
 
 void Scheduler::schedule() {
+    if (m_threadPool.queue_size() > 0)
+        return;
+
     long id;
     for (auto& pTimeId : m_timeIdList) {
         id = pTimeId.second;
@@ -69,17 +72,23 @@ void Scheduler::schedule() {
         } else {
             SchedFuncPack& pack = m_funcMap[id];
             if (pack.maxTime < timeMark(id, false)) {
-                if (m_threadPool.queue_size() < 2) { // let's charge a little
-                    std::cout << "Pushing maxTime=" << pack.maxTime << std::endl;
-                    m_threadPool.push(std::ref(pack.func));
-                    timeMark(id);
-                } else {
-                    // m_timeIdVec being sorted by decreasing time
-                    // it makes bigger maxTime prioritary
-                    // (if bigger maxTime can't run, then lesser maxTime are not ran
-                    // to avoid fill the all the thread)
+                std::cout << "Pushing maxTime=" << pack.maxTime << std::endl;
+                m_threadPool.push(std::ref(pack.func));
+                timeMark(id);
+
+                // Tasks are inserted in the threadPool
+                // by decreasing maxTime order, because m_timeIdList is sorted that way
+                // (meaning greater maxTime are inserted first)
+                //
+                // This is to ensure that task that takes more time to complete
+                // are inserted, because the threadPool could be spammed/filled with
+                // short tasks otherwise.
+                //
+                // If the threadPool has no place left (i.e all its thread are actually running)
+                // break from the loop
+
+                if (m_threadPool.n_idle() == 0)
                     break;
-                }
             }
         }
     }
