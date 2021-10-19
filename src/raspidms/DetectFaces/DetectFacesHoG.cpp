@@ -1,4 +1,4 @@
-#include "DetectFacesHoG.h"
+#include "DetectFaces/DetectFacesHoG.h"
 
 #include "Utils.h"
 

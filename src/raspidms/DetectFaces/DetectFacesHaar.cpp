@@ -1,4 +1,4 @@
-#include "DetectFacesHaar.h"
+#include "DetectFaces/DetectFacesHaar.h"
 
 #include "Utils.h"
 

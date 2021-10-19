@@ -1,7 +1,7 @@
 #ifndef DETECTFACESMYYOLO_H
 #define DETECTFACESMYYOLO_H
 
-#include "IDetectFaces.h"
+#include "DetectFaces/IDetectFaces.h"
 
 class DetectFacesMyYolo : public IDetectFaces
 {

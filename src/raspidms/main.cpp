@@ -25,8 +25,8 @@
 
 #include "Utils.h"
 
-#include "DetectFacesStage.h"
-#include "FaceFeaturesStage.h"
+#include "DetectFaces/DetectFacesStage.h"
+#include "FaceFeatures/FaceFeaturesStage.h"
 
 //#include "FaceFeaturesDlib.h"
 

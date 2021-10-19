@@ -14,7 +14,7 @@
 #include <opencv2/dnn.hpp>
 #include <opencv2/core/utility.hpp>
 
-#include "IDetectFaces.h"
+#include "DetectFaces/IDetectFaces.h"
 #include "IStage.h"
 #include "SharedQueue.h"
 

@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "SharedQueue.h"
-#include "IFaceFeatures.h"
-#include "IDetectFaces.h"
+#include "FaceFeatures/IFaceFeatures.h"
+#include "DetectFaces/IDetectFaces.h"
 #include "IStage.h"
 
 const std::string DLIB_68_FACE_LANDMARKS_PATH = "../res/shape_predictor_68_face_landmarks.dat";

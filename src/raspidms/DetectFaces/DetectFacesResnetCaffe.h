@@ -1,7 +1,7 @@
 #ifndef DETECTFACESRESNETCAFFE_H
 #define DETECTFACESRESNETCAFFE_H
 
-#include "IDetectFaces.h"
+#include "DetectFaces/IDetectFaces.h"
 
 class DetectFacesResnetCaffe : public IDetectFaces
 {

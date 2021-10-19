@@ -1,7 +1,7 @@
 #ifndef DETECTFACESHAAR_H
 #define DETECTFACESHAAR_H
 
-#include "IDetectFaces.h"
+#include "DetectFaces/IDetectFaces.h"
 
 class DetectFacesHaar : public IDetectFaces
 {

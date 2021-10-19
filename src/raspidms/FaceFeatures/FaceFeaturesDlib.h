@@ -1,7 +1,7 @@
 #ifndef FACEFEATURESDLIB_H
 #define FACEFEATURESDLIB_H
 
-#include "IFaceFeatures.h"
+#include "FaceFeatures/IFaceFeatures.h"
 #include <dlib/image_processing.h>
 
 class FaceFeaturesDlib : public IFaceFeatures

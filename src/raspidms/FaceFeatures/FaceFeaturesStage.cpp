@@ -1,6 +1,6 @@
-#include "FaceFeaturesDlib.h"
-#include "FaceFeatureEmpty.h"
-#include "FaceFeaturesStage.h"
+#include "FaceFeatures/FaceFeaturesDlib.h"
+#include "FaceFeatures/FaceFeaturesEmpty.h"
+#include "FaceFeatures/FaceFeaturesStage.h"
 
 const size_t MAX_OUT_QUEUE_SIZE = 2;
 
@@ -57,7 +57,7 @@ std::shared_ptr<IFaceFeatures> FaceFeaturesStage::getNextDetector(int threadId) 
         }
         else //do not insert detector if name unkown, but still return empty one
         {
-            detector.reset(new FaceFeatureEmpty());
+            detector.reset(new FaceFeaturesEmpty());
         }
 
         return detector;

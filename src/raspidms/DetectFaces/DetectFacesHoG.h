@@ -1,7 +1,7 @@
 #ifndef DETECTFACESHOG_H
 #define DETECTFACESHOG_H
 
-#include "IDetectFaces.h"
+#include "DetectFaces/IDetectFaces.h"
 
 #include <dlib/image_processing.h>
 #include <dlib/image_processing/frontal_face_detector.h>

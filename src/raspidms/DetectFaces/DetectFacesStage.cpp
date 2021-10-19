@@ -1,10 +1,10 @@
-#include "DetectFacesStage.h"
+#include "DetectFaces/DetectFacesStage.h"
 
-#include "DetectFacesEmpty.h"
-#include "DetectFacesHaar.h"
-#include "DetectFacesMyYolo.h"
-#include "DetectFacesResnetCaffe.h"
-#include "DetectFacesHoG.h"
+#include "DetectFaces/DetectFacesEmpty.h"
+#include "DetectFaces/DetectFacesHaar.h"
+#include "DetectFaces/DetectFacesMyYolo.h"
+#include "DetectFaces/DetectFacesResnetCaffe.h"
+#include "DetectFaces/DetectFacesHoG.h"
 
 const size_t MAX_OUT_QUEUE_SIZE = 4;
 

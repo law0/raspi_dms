@@ -1,12 +1,12 @@
-#include "FaceFeatureEmpty.h"
+#include "FaceFeatures/FaceFeaturesEmpty.h"
 #include "Utils.h"
 
-FaceFeatureEmpty::FaceFeatureEmpty(const std::string& path) : IFaceFeatures(path), m_id(getUniqueId())
+FaceFeaturesEmpty::FaceFeaturesEmpty(const std::string& path) : IFaceFeatures(path), m_id(getUniqueId())
 {
 
 }
 
-FaceFeaturesResult FaceFeatureEmpty::operator()(const cv::Mat& frame,
+FaceFeaturesResult FaceFeaturesEmpty::operator()(const cv::Mat& frame,
                                                 std::vector<cv::Rect>& roi) {
     timeMark(m_id);
     std::vector<std::vector<cv::Point2i>> ret;

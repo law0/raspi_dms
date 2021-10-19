@@ -8,7 +8,8 @@ add_subdirectory(../dlib dlib_build)
 #parameter passing has changed in GCC 7.1
 set(GCC_NO_WARN_FLAGS "-Wno-psabi")
 
-file(GLOB SOURCES "*.cpp")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+file(GLOB_RECURSE SOURCES "*.cpp")
 add_executable(raspidms ${SOURCES})
 
 add_definitions(${GCC_NO_WARN_FLAGS})

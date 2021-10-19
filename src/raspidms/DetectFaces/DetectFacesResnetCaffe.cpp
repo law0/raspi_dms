@@ -1,4 +1,4 @@
-#include "DetectFacesResnetCaffe.h"
+#include "DetectFaces/DetectFacesResnetCaffe.h"
 
 #include "Utils.h"
 
