@@ -24,7 +24,7 @@ FaceFeaturesStage::FaceFeaturesStage(const std::string& detectorName,
 }
 
 void FaceFeaturesStage::operator()(int threadId) {
-    //std::cout << "FaceFeaturesStage thread id " << threadId << std::endl;
+    std::cout << "FaceFeaturesStage thread id " << threadId << std::endl;
     std::shared_ptr<IFaceFeatures> detector = getNextDetector(threadId);
 
     //Don't wait for frame, there should be plenty

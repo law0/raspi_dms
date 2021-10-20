@@ -27,7 +27,7 @@ DetectFacesStage::DetectFacesStage(const std::string& detectorName,
 }
 
 void DetectFacesStage::operator()(int threadId) {
-    //std::cout << "-----------> DetectFacesStage thread id " << threadId << std::endl;
+    std::cout << "-----------> DetectFacesStage thread id " << threadId << std::endl;
     std::shared_ptr<IDetectFaces> detector = getNextDetector(threadId);
 
     //Don't wait for frame, there should be plenty
