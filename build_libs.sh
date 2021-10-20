@@ -4,16 +4,15 @@ LOCAL_PWD=$(pwd)
 
 echo $LOCAL_PWD
 
-mkdir -p out/staging/
-mkdir -p out/final/
-mkdir -p out/final/pkgconfig/
-mkdir -p out/build/
-
 SRC=${LOCAL_PWD}/src
-STAGING=${LOCAL_PWD}/out/staging
 FINAL=${LOCAL_PWD}/out/final
 PKGCONFIG=${FINAL}/pkgconfig
 BUILD=${LOCAL_PWD}/out/build
+
+mkdir -p $FINAL
+mkdir -p $PKGCONFIG
+mkdir -p $BUILD
+
 CROSS_BUILD_OPTIONS=""
 TOOLCHAIN_FILE=${SRC}/opencv-4.5.2/platforms/linux/arm-gnueabi.toolchain.cmake
 PYTHON_OPTIONS="-D PYTHON2_INCLUDE_PATH=/usr/include/python2.7 \
@@ -23,14 +22,17 @@ PYTHON_OPTIONS="-D PYTHON2_INCLUDE_PATH=/usr/include/python2.7 \
   -D PYTHON3_LIBRARIES=/usr/lib/arm-linux-gnueabihf/libpython3.6m.so \
   -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include "
 
-
-if [ "$TOOLCHAIN_FILE_OVERRIDE" != "LOCAL" ]
+if [ -n "$TOOLCHAIN_FILE_OVERRIDE" ]
 then
-    TOOLCHAIN_FILE=$TOOLCHAIN_FILE_OVERRIDE
-else
-    TOOLCHAIN_FILE=""
-    PYTHON_OPTIONS="-D PYTHON2_NUMPY_INCLUDE_DIRS=/usr/lib/python2/dist-packages/numpy/core/include \
-                    -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include "
+    if [ "$TOOLCHAIN_FILE_OVERRIDE" != "LOCAL" ]
+    then
+        TOOLCHAIN_FILE=$TOOLCHAIN_FILE_OVERRIDE
+    
+    else #LOCAL BUILD
+        TOOLCHAIN_FILE=""
+        PYTHON_OPTIONS="-D PYTHON2_NUMPY_INCLUDE_DIRS=/usr/lib/python2/dist-packages/numpy/core/include \
+                        -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include "
+    fi
 fi
 
 if [ -n "$TOOLCHAIN_FILE" ]
@@ -69,11 +71,11 @@ cp cv2.cpython-36m-x86_64-linux-gnu.so cv2.so
 
 # Pkgconfig
 cd $LOCAL_PWD
-#echo "libdir = ${FINAL}/opencv-4.5.2/lib" > ${PKGCONFIG}/opencv.pc
-#echo "includedir = ${FINAL}/opencv-4.5.2/include/opencv4" >> ${PKGCONFIG}/opencv.pc
-#echo >> ${PKGCONFIG}/opencv.pc
+echo "libdir = ${FINAL}/opencv-4.5.2/lib" > ${PKGCONFIG}/opencv.pc
+echo "includedir = ${FINAL}/opencv-4.5.2/include/opencv4" >> ${PKGCONFIG}/opencv.pc
+echo >> ${PKGCONFIG}/opencv.pc
 #cat ${SRC}/opencv_pkgconfig-4.5.2/opencv.pc.part >> ${PKGCONFIG}/opencv.pc
-cp ./opencv.pc ${PKGCONFIG}/opencv.pc
+cat ./opencv.pc.part >> ${PKGCONFIG}/opencv.pc
 
 # Tar
 cd ${FINAL}

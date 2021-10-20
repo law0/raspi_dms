@@ -1,6 +1,3 @@
-libdir = /home/lrasamoelison/Workspace/test/raspi_dms/out/final/opencv-4.5.2/lib
-includedir = /home/lrasamoelison/Workspace/test/raspi_dms/out/final/opencv-4.5.2/include/opencv4
-
 Name: OpenCV
 Description: OpenCV (Open Source Computer Vision Library) is an open source computer vision and machine learning software library.
 Version: 4.5.2
