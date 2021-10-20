@@ -33,6 +33,11 @@ public:
      */
     virtual void operator()(int threadId) override;
 
+    /**
+     * override double IStage::averageTime();
+     */
+    virtual double averageTime() override;
+
 private:
     /**
      * @brief getNextDetector
@@ -47,6 +52,8 @@ private:
     std::shared_ptr<SharedQueue<FaceFeaturesResult>> m_outFaceFeatures;
     std::unordered_map<int /*threadId*/, std::shared_ptr<IFaceFeatures>> m_detectors;
     std::mutex m_mutex;
+    double m_averageTime;
+    double m_averageAlpha;
 
 };
 

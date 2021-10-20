@@ -6,7 +6,14 @@
 #include "Utils.h"
 
 
-Scheduler::Scheduler() : m_funcMap(), m_threadPool(std::thread::hardware_concurrency())
+Scheduler::Scheduler()
+    : m_funcMap(),
+      m_idPQ([](id_timing_t left, id_timing_t right) { return left.first > right.first; }),
+      m_threadPool(std::thread::hardware_concurrency() - 1,
+                   std::bind(&Scheduler::timingCb,
+                   this,
+                   std::placeholders::_1,
+                   std::placeholders::_2))
 {
 
 }
@@ -15,22 +22,10 @@ Scheduler::~Scheduler() {
     m_threadPool.stop();
 }
 
-long Scheduler::addFunc(SchedFunc func, double maxTime, double minTime) {
-    if (minTime > maxTime) {
-        std::cerr << __func__ << ":"
-                  << __LINE__ << "error : maxTime "
-                  << maxTime << "must be greater or equal than minTime "
-                  << minTime << std::endl;
-        return LONG_MIN;
-    }
+long Scheduler::addFunc(SchedFunc func, int priority) {
     long id = getUniqueId();
-    m_funcMap.insert({id, {func, maxTime, minTime}});
-
-    auto it = m_timeIdList.begin();
-
-    while (it != m_timeIdList.end() && maxTime <= it->first) { ++it; }
-
-    m_timeIdList.insert(it, {maxTime, id});
+    m_funcMap.insert({id, {func, priority, 0.}});
+    m_idPQ.push({0., id});
 
     return id;
 }
@@ -39,12 +34,7 @@ bool Scheduler::triggerFunc(long id) {
     if (m_funcMap.count(id) == 0)
         return false;
 
-    if (m_funcMap[id].minTime < timeMark(id, false)) {
-        if (m_threadPool.n_idle() > 0)
-            m_threadPool.push(std::ref(m_funcMap[id].func));
-        else
-            return false;
-    }
+    m_threadPool.push(id, std::ref(m_funcMap[id].func));
 
     return true;
 }
@@ -59,37 +49,53 @@ bool Scheduler::removeFunc(long id) {
     return true;
 }
 
+void Scheduler::timingCb(long id, double time) {
+    // No need to mutex protect, threadPool protects the call of this callback already
+
+    //std::cout << __FUNCTION__ << " " << id << " " << time << std::endl;
+
+    if (m_funcMap.count(id) == 0) {
+        // this func doesn't come from us
+        return;
+    }
+
+    SchedFuncPack& pack = m_funcMap[id];
+    pack.time_acc += time * pack.priority;
+
+    m_idPQ.push({pack.time_acc, id});
+}
+
 void Scheduler::schedule() {
-    if (m_threadPool.queue_size() > 0)
+    if (m_threadPool.queue_size() > 0 || m_threadPool.n_idle() == 0)
         return;
 
-    long id;
-    for (auto& pTimeId : m_timeIdList) {
-        id = pTimeId.second;
+    while (!m_idPQ.empty()) {
+        id_timing_t nextIdTiming = m_idPQ.top();
+        m_idPQ.pop();
+        double time_acc = nextIdTiming.first;
+        long id = nextIdTiming.second;
+
+        // Tasks are inserted in the threadPool
+        // by increasing time_acc order, meaning the task that has run the LESS so far
+        // gets to be ran
+        //
+        // If the threadPool has no place left (i.e all its thread are actually running
+        // or are about to run)
+        // break from the loop
+        //
+        // Timing are updated at task completion, by the callback timingCb
+        // This works most like linux CFS
+
         if (m_funcMap.count(id) == 0) {
             // should never happen
             abort();
         } else {
             SchedFuncPack& pack = m_funcMap[id];
-            if (pack.maxTime < timeMark(id, false)) {
-                std::cout << "Pushing maxTime=" << pack.maxTime << std::endl;
-                m_threadPool.push(std::ref(pack.func));
-                timeMark(id);
-
-                // Tasks are inserted in the threadPool
-                // by decreasing maxTime order, because m_timeIdList is sorted that way
-                // (meaning greater maxTime are inserted first)
-                //
-                // This is to ensure that task that takes more time to complete
-                // are inserted, because the threadPool could be spammed/filled with
-                // short tasks otherwise.
-                //
-                // If the threadPool has no place left (i.e all its thread are actually running)
-                // break from the loop
-
-                if (m_threadPool.n_idle() == 0)
-                    break;
-            }
+            m_threadPool.push(id, std::ref(pack.func));
         }
+
+        if (m_threadPool.size() - m_threadPool.n_idle() - m_threadPool.queue_size() <= 0)
+            break;
     }
+
 }

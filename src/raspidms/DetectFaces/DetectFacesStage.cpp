@@ -6,7 +6,11 @@
 #include "DetectFaces/DetectFacesResnetCaffe.h"
 #include "DetectFaces/DetectFacesHoG.h"
 
+#include "Utils.h"
+
 const size_t MAX_OUT_QUEUE_SIZE = 4;
+const double INITIAL_AVERAGE_TIME = 0.5;
+const double AVERAGE_ALPHA = 0.1;
 
 DetectFacesStage::DetectFacesStage(const std::string& detectorName,
                                    std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
@@ -15,24 +19,36 @@ DetectFacesStage::DetectFacesStage(const std::string& detectorName,
       m_inFrames(inFrames),
       m_outRects(outRects),
       m_detectors(),
-      m_mutex()
+      m_mutex(),
+      m_averageTime(INITIAL_AVERAGE_TIME),
+      m_averageAlpha(AVERAGE_ALPHA)
 {
 
 }
 
 void DetectFacesStage::operator()(int threadId) {
-    std::cout << "DetectFacesStage thread id " << threadId << std::endl;
+    //std::cout << "-----------> DetectFacesStage thread id " << threadId << std::endl;
     std::shared_ptr<IDetectFaces> detector = getNextDetector(threadId);
 
     //Don't wait for frame, there should be plenty
     cv::Mat frame;
-    if(! m_inFrames->front_no_wait(frame)) {
-        std::cout << __FUNCTION__ << ": " << "empty frame" << std::endl;
+    if(! m_inFrames->pop_front_no_wait(frame) || frame.empty()) {
+        std::cout << "DetectFacesStage: " << "empty frame" << std::endl;
         return;
     }
 
+
     // Detect the faces
-    m_outRects->push_back((*detector)(frame));
+    DetectedFacesResult dfr = (*detector)(frame);
+
+    // Exponential moving average
+    m_averageTime = m_averageAlpha * dfr.second + (1. - m_averageAlpha) * m_averageTime;
+
+    if (dfr.first.size() == 0) {
+        //std::cout << "DetectFacesStage: detector return empty faces vector" << std::endl;
+    }
+
+    m_outRects->push_back(dfr);
 
     if (m_outRects->size() > MAX_OUT_QUEUE_SIZE)
         m_outRects->pop_front_no_wait();
@@ -83,4 +99,8 @@ std::shared_ptr<IDetectFaces> DetectFacesStage::getNextDetector(int threadId) {
 
         return detector;
     }
+}
+
+double DetectFacesStage::averageTime() {
+    return m_averageTime;
 }

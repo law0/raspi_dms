@@ -61,5 +61,7 @@ DetectedFacesResult DetectFacesResnetCaffe::operator()(const cv::Mat & frame) {
         }
     }
 
+    // std::cout << __FUNCTION__ << " ---------------> faces.size() = " << faces.size() << std::endl;
+
     return std::make_pair(faces, timeMark(m_id));
 }

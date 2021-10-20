@@ -9,6 +9,7 @@
 #include <thread>
 #include <vector>
 #include "SharedQueue.h"
+#include "Utils.h"
 
 // Original inspiration from https://github.com/progschj/ThreadPool/blob/master/ThreadPool.h
 
@@ -23,23 +24,39 @@
  * std::vector<std::future<void(int id)>> results(4);
  *  for (int i = 0; i < 8; ++i) { // for 8 iterations,
  *      for (int j = 0; j < 4; ++j) {
- *          results[j] = p.push([&arr, j](int){ arr[j] +=2; }); //function must take int - id of thread as param
+ *          results[j] = p.push(funcId, [&arr, j](int){ arr[j] +=2; }); //function must take int - id of thread as param
  *      }
  *      for (int j = 0; j < 4; ++j) {
  *          results[j].get();
  *      }
  *      arr[4] = std::min_element(arr, arr + 4);
-    }
+ *  }
+ *
+ * funcId should be preferably unique
+ *
+ * It is also possible to call:
+ * ThreadPool p(4, callback);
+ * with callback of signature std::function<void(long, double)>
+ * This callback will be called back :
+ * param long : the funcId of a function that was just ran
+ * param double : the time in seconds it took to run the said function
  */
 
+const double MINIMAL_TIME_GRANULARITY = 0.01;
 
 class ThreadPool {
 
 public:
 
-    ThreadPool() { init(); }
+    ThreadPool(std::function<void(long, double)> timingCb = {})
+        : m_timingCb(timingCb)
+    {
+        init();
+    }
 
-    ThreadPool(int nThreads) {
+    ThreadPool(int nThreads, std::function<void(long, double)> timingCb = {})
+        : m_timingCb(timingCb)
+    {
         init();
         resize(nThreads);
     }
@@ -91,19 +108,19 @@ public:
 
     // empty the queue
     void clear_queue() {
-        std::function<void(int id)> * _f;
+        FuncPack _f;
         while (m_queue.pop_front_no_wait(_f))
-            delete _f; // empty the queue
+            delete _f.funcPtr; // empty the queue
     }
 
     // pops a functional wrapper to the original function
     std::function<void(int)> pop() {
-        std::function<void(int id)> * _f = nullptr;
+        FuncPack _f;
         m_queue.pop_front_no_wait(_f);
-        std::unique_ptr<std::function<void(int id)>> func(_f); // at return, delete the function even if an exception occurred
+        std::unique_ptr<std::function<void(int id)>> func(_f.funcPtr); // at return, delete the function even if an exception occurred
         std::function<void(int)> f;
-        if (_f)
-            f = *_f;
+        if (_f.funcPtr)
+            f = *(_f.funcPtr);
         return f;
     }
 
@@ -141,7 +158,7 @@ public:
     }
 
     template<typename F, typename... Rest>
-    auto push(F && f, Rest&&... rest) ->std::future<decltype(f(0, rest...))> {
+    auto push(long id, F && f, Rest&&... rest) ->std::future<decltype(f(0, rest...))> {
         auto pck = std::make_shared<std::packaged_task<decltype(f(0, rest...))(int)>>(std::bind(std::forward<F>(f),
                                                                                                 std::placeholders::_1,
                                                                                                 std::forward<Rest>(rest)...)
@@ -149,7 +166,7 @@ public:
         auto _f = new std::function<void(int id)>([pck](int id) {
             (*pck)(id);
         });
-        m_queue.push_back(_f);
+        m_queue.push_back({_f, id});
         std::unique_lock<std::mutex> lock(m_mutex);
         m_cv.notify_one();
         return pck->get_future();
@@ -158,17 +175,16 @@ public:
     // run the user's function that accepts argument int - id of the running thread. returned value is templatized
     // operator returns std::future, where the user can get the result and rethrow the catched exceptions
     template<typename F>
-    auto push(F && f) ->std::future<decltype(f(0))> {
+    auto push(long id, F && f) ->std::future<decltype(f(0))> {
         auto pck = std::make_shared<std::packaged_task<decltype(f(0))(int)>>(std::forward<F>(f));
         auto _f = new std::function<void(int id)>([pck](int id) {
             (*pck)(id);
         });
-        m_queue.push_back(_f);
+        m_queue.push_back({_f, id});
         std::unique_lock<std::mutex> lock(m_mutex);
         m_cv.notify_one();
         return pck->get_future();
     }
-
 
 private:
 
@@ -182,12 +198,22 @@ private:
         std::shared_ptr<std::atomic<bool>> flag(m_flags[i]); // a copy of the shared ptr to the flag
         auto f = [this, i, flag/* a copy of the shared ptr to the flag */]() {
             std::atomic<bool> & _flag = *flag;
-            std::function<void(int id)> * _f;
+            FuncPack _f;
             bool isPop = m_queue.pop_front_no_wait(_f);
             while (true) {
                 while (isPop) {  // if there is anything in the queue
-                    std::unique_ptr<std::function<void(int id)>> func(_f); // at return, delete the function even if an exception occurred
-                    (*_f)(i);
+                    std::unique_ptr<std::function<void(int id)>> func(_f.funcPtr); // at return, delete the function even if an exception occurred
+
+                    // time measure
+                    double mark = timeMark(_f.id, false);
+
+                    // call the actual function
+                    (*_f.funcPtr)(i);
+                    {
+                        std::unique_lock<std::mutex> lock(m_mutex);
+                        m_timingCb(_f.id, timeMark(_f.id, false) - mark + MINIMAL_TIME_GRANULARITY);
+                    }
+
                     if (_flag)
                         return;  // the thread is to be stopped, return even if the queue is not empty yet
                     else
@@ -207,9 +233,15 @@ private:
 
     void init() { m_nWaiting = 0; m_isStop = false; m_isDone = false; }
 
+    struct FuncPack {
+        std::function<void(int id)> * funcPtr;
+        long id;
+    };
+
     std::vector<std::unique_ptr<std::thread>> m_threads;
     std::vector<std::shared_ptr<std::atomic<bool>>> m_flags;
-    SharedQueue<std::function<void(int id)> *> m_queue;
+    SharedQueue<FuncPack> m_queue;
+    std::function<void(long/*id*/, double/*time*/)> m_timingCb;
     std::atomic<bool> m_isDone;
     std::atomic<bool> m_isStop;
     std::atomic<int> m_nWaiting;  // how many threads are waiting

@@ -36,7 +36,7 @@
 
 #include "Scheduler.h"
 
-const uint32_t IN_BUFFER_SIZE = 16;
+const uint32_t IN_BUFFER_SIZE = 4;
 const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
 
 void printHelp () {
@@ -74,6 +74,7 @@ int main(int argc, char**argv) {
 
     // Out queue of rects to draw (and region of interests for feature detection)
     std::shared_ptr<SharedQueue<DetectedFacesResult>> rectsQueue(new SharedQueue<DetectedFacesResult>());
+    std::shared_ptr<SharedQueue<DetectedFacesResult>> meanRectsQueue(new SharedQueue<DetectedFacesResult>());
 
     // Face feature to be drawn
     std::shared_ptr<SharedQueue<FaceFeaturesResult>> faceFeaturesQueue(new SharedQueue<FaceFeaturesResult>());
@@ -81,13 +82,37 @@ int main(int argc, char**argv) {
     // Responsible of detecting faces, needs in frames, and ouputs out rectangles
     DetectFacesStage detectFacesStage(firstDetector, inputFrameQueue, rectsQueue);
 
+
+    meanRectsQueue->push_back({{cv::Rect()}, 0.});
+
+    // This is temporary
+    // calculate the exp moving average of rects in rectsQueue and put it
+    // in meanRectsQueue (which faceFeaturesStage will pull from)
+    // This avoid jumps in region of interest
+    // stuck to only one rects though
+    auto rectsMeanCalculator = [&](int) {
+            DetectedFacesResult dfr;
+            DetectedFacesResult& mdfr = meanRectsQueue->front_wait();
+            cv::Rect& rect = mdfr.first[0];
+            double alpha = 0.7;
+            if (rectsQueue->pop_front_no_wait(dfr) && dfr.first.size() > 0) {
+                rect.x = alpha * dfr.first[0].x + (1. - alpha) * rect.x;
+                rect.y = alpha * dfr.first[0].y + (1. - alpha) * rect.y;
+                rect.width = alpha * dfr.first[0].width + (1. - alpha) * rect.width;
+                rect.height = alpha * dfr.first[0].height + (1. - alpha) * rect.height;
+            }
+    };
+
+
     // Responsible for detecting face feature (landmarks)
-    FaceFeaturesStage faceFeaturesStage("dlib_68", inputFrameQueue, rectsQueue, faceFeaturesQueue);
+    FaceFeaturesStage faceFeaturesStage("dlib_68", inputFrameQueue, meanRectsQueue, faceFeaturesQueue);
 
     Scheduler scheduler;
 
-    scheduler.addFunc(std::ref(detectFacesStage), 0.5, 0.1);
-    scheduler.addFunc(std::ref(faceFeaturesStage), 0.1, 0.1);
+    scheduler.addFunc(std::ref(detectFacesStage));
+    scheduler.addFunc(rectsMeanCalculator);
+    scheduler.addFunc(std::ref(faceFeaturesStage));
+    //scheduler.addFunc([](int i){ std::cout << "----------> test: " << i << " <------ " << std::endl; }, 1);
 
     DetectedFacesResult rects;
     FaceFeaturesResult faceFeatures;
@@ -125,7 +150,7 @@ int main(int argc, char**argv) {
         }
 
         DetectedFacesResult dfr;
-        if (rectsQueue->front_no_wait(dfr) && dfr.first.size() > 0)
+        if (meanRectsQueue->front_no_wait(dfr) /*&& dfr.first.size() > 0*/)
             rects = dfr;
 
         if (rects.first.size() > 0) {
@@ -138,8 +163,13 @@ int main(int argc, char**argv) {
         }
 
         FaceFeaturesResult ffr;
-        if (faceFeaturesQueue->front_no_wait(ffr) && ffr.first.size() > 0)
-            faceFeatures = ffr;
+        if (faceFeaturesQueue->front_no_wait(ffr)) {
+            if (ffr.first.size() > 0) {
+                faceFeatures = ffr;
+            } else {
+                std::cout << "Empty face features ! This should not happen !" << std::endl;
+            }
+        }
 
         if (faceFeatures.first.size() > 0) {
             for(const auto & vecpoints : faceFeatures.first) {
