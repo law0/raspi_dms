@@ -17,6 +17,11 @@ public:
     //MAY BLOCK until there is an element to retrieve
     T& front_wait();
 
+    //return ref to front element
+    //not blocking but may not fill the element at all
+    //(return false in that case)
+    bool front_no_wait(T& item);
+
     //remove front element (not blocking)
     //return true if an element was deleted
     //false if already empty
@@ -35,7 +40,7 @@ public:
     void push_back(const T& item);
     void push_back(T&& item);
 
-    int size();
+    size_t size();
     bool empty();
 
 private:
@@ -59,6 +64,16 @@ T& SharedQueue<T>::front_wait()
         m_cv.wait(mlock);
     }
     return m_queue.front();
+}
+
+template <typename T>
+bool SharedQueue<T>::front_no_wait(T& item)
+{
+    std::unique_lock<std::mutex> mlock(m_mutex);
+    if (m_queue.empty())
+        return false;
+    item = m_queue.front();
+    return true;
 }
 
 template <typename T>
@@ -113,10 +128,10 @@ void SharedQueue<T>::push_back(T&& item)
 }
 
 template <typename T>
-int SharedQueue<T>::size()
+size_t SharedQueue<T>::size()
 {
     std::unique_lock<std::mutex> mlock(m_mutex);
-    int size = m_queue.size();
+    size_t size = m_queue.size();
     mlock.unlock();
     return size;
 }

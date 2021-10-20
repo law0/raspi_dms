@@ -2,25 +2,29 @@
 #define SCHEDULER_H
 
 #include <functional>
-#include <map>
+#include <deque>
+#include <unordered_map>
 #include <tuple>
 
-typedef std::function<void()> SchedFunc;
+#include "ThreadPool.h"
+
+typedef std::function<void(int)> SchedFunc;
 
 class Scheduler
 {
 public:
     Scheduler();
+    ~Scheduler();
 
     /**
-     * @brief addFunc add a function func that will be called every maxTime by this scheduler
-     * func can also be called upon call of triggerFunc below, unless minTime has not elapsed
+     * @brief addFunc add a function func that will be called every "period" (in seconds) by this scheduler
+     * func. Don't use priority for now
      * @param func
-     * @param maxTime
-     * @param minTime
+     * @param priority
+     * @param period
      * @return the unique id of the function to call in triggerFunc
      */
-    long addFunc(SchedFunc func, double maxTime, double minTime);
+    long addFunc(SchedFunc func, int priority = 1);
 
     /**
      * @brief triggerFunc, given the right id, called immediately the mapped function,
@@ -39,18 +43,32 @@ public:
     bool removeFunc(long id);
 
     /**
-     * @brief schedule, need to be check periodically for this Scheduler to work
+     * @brief schedule, need to be called periodically for this Scheduler to work
      */
     void schedule();
 
 private:
-    typedef struct SchedFuncPack_t {
+    struct SchedFuncPack {
         SchedFunc func;
-        double maxTime;
-        double minTime;
-    } SchedFuncPack;
+        int priority;
+        double time_acc;
+    };
 
-    std::map<long, SchedFuncPack> m_map;
+    /**
+     * @brief timingCb get called back when func with given "id" has finished within "time"
+     * @param id
+     * @param time
+     */
+    void timingCb(long id, double time);
+
+    // map of SchedFuncPack
+    std::unordered_map<long /*id*/, SchedFuncPack> m_funcMap;
+
+    // id sorted by decreasing runtime
+    typedef std::pair<double /*time*/, long /*id*/> id_timing_t;
+    std::priority_queue<id_timing_t, std::vector<id_timing_t>, std::function<bool(id_timing_t, id_timing_t)>> m_idPQ;
+
+    ThreadPool m_threadPool;
 };
 
 #endif // SCHEDULER_H

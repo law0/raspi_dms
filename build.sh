@@ -18,11 +18,14 @@ BUILD=${LOCAL_PWD}/out/build
 TOOLCHAIN_FILE_OPTION=""
 TOOLCHAIN_FILE=${SRC}/opencv-4.5.2/platforms/linux/arm-gnueabi.toolchain.cmake
 
-if [ "$TOOLCHAIN_FILE_OVERRIDE" != "LOCAL" ]
+if [ -n "$TOOLCHAIN_FILE_OVERRIDE" ]
 then
-    TOOLCHAIN_FILE=$TOOLCHAIN_FILE_OVERRIDE
-else
-    TOOLCHAIN_FILE=""
+    if [ "$TOOLCHAIN_FILE_OVERRIDE" != "LOCAL" ]
+    then
+        TOOLCHAIN_FILE=$TOOLCHAIN_FILE_OVERRIDE
+    else
+        TOOLCHAIN_FILE=""
+    fi
 fi
 
 if [ -n "$TOOLCHAIN_FILE" ]
