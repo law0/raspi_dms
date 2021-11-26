@@ -15,12 +15,17 @@ mkdir -p $BUILD
 
 CROSS_BUILD_OPTIONS=""
 TOOLCHAIN_FILE=${SRC}/opencv-4.5.2/platforms/linux/arm-gnueabi.toolchain.cmake
-PYTHON_OPTIONS="-D PYTHON2_INCLUDE_PATH=/usr/include/python2.7 \
-  -D PYTHON2_LIBRARIES=/usr/lib/arm-linux-gnueabihf/libpython2.7.so \
-  -D PYTHON2_NUMPY_INCLUDE_DIRS=/usr/lib/python2/dist-packages/numpy/core/include \
-  -D PYTHON3_INCLUDE_PATH=/usr/include/python3.6m \
-  -D PYTHON3_LIBRARIES=/usr/lib/arm-linux-gnueabihf/libpython3.6m.so \
-  -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include "
+#PYTHON_OPTIONS="-D PYTHON2_INCLUDE_PATH=/usr/include/python2.7 \
+#  -D PYTHON2_LIBRARIES=/usr/lib/arm-linux-gnueabihf/libpython2.7.so \
+#  -D PYTHON2_NUMPY_INCLUDE_DIRS=/usr/lib/python2/dist-packages/numpy/core/include \
+#  -D PYTHON3_INCLUDE_PATH=/usr/include/python3.6m \
+#  -D PYTHON3_LIBRARIES=/usr/lib/arm-linux-gnueabihf/libpython3.6m.so \
+#  -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include "
+
+
+#PYTHON_OPTIONS="-D PYTHON3_INCLUDE_PATH=/usr/include/python3.6m \
+#  -D PYTHON3_LIBRARIES=/usr/lib/arm-linux-gnueabihf/libpython3.6m.so \
+"  -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include"
 
 if [ -n "$TOOLCHAIN_FILE_OVERRIDE" ]
 then
@@ -56,9 +61,6 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
   -D OPENCV_ENABLE_NONFREE=ON \
   -D BUILD_TESTS=OFF \
   -D BUILD_DOCS=OFF \
-   ${PYTHON_OPTIONS} \
-  -D BUILD_OPENCV_PYTHON2=ON \
-  -D BUILD_OPENCV_PYTHON3=ON \
   -D BUILD_EXAMPLES=ON \
    ${SRC}/opencv-4.5.2
 
