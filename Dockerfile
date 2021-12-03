@@ -25,7 +25,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-in
   crossbuild-essential-armhf \
   gfortran-arm-linux-gnueabihf \
   libopenblas-dev liblapack-dev \
-  cmake git pkg-config wget
+  cmake git pkg-config wget cpuid cpuidtool
 
 ENV PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/share/pkgconfig
 

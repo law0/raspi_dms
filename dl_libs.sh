@@ -13,5 +13,11 @@ rm *.tar.gz
 ########## Download dlib
 git clone --depth 1 --branch v19.22 https://github.com/davisking/dlib.git
 
+########## Download tensorflow
+git clone --depth 1 --branch v2.6.2 https://github.com/tensorflow/tensorflow.git
+wget https://storage.googleapis.com/mirror.tensorflow.org/developer.arm.com/media/Files/downloads/gnu-a/8.3-2019.03/binrel/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz
+mkdir -p tflite_toolchain
+tar xvf gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf.tar.xz -C tflite_toolchain
+
 cd $LOCAL_PWD
 

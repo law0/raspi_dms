@@ -25,7 +25,7 @@ TOOLCHAIN_FILE=${SRC}/opencv-4.5.2/platforms/linux/arm-gnueabi.toolchain.cmake
 
 #PYTHON_OPTIONS="-D PYTHON3_INCLUDE_PATH=/usr/include/python3.6m \
 #  -D PYTHON3_LIBRARIES=/usr/lib/arm-linux-gnueabihf/libpython3.6m.so \
-"  -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include"
+#"  -D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include"
 
 if [ -n "$TOOLCHAIN_FILE_OVERRIDE" ]
 then
@@ -42,11 +42,22 @@ fi
 
 if [ -n "$TOOLCHAIN_FILE" ]
 then
-    CROSS_BUILD_OPTIONS="-D CMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
+
+    OPENCV_CROSS_BUILD_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
     -D ENABLE_NEON=ON \
     -D ENABLE_VFPV3=ON "
-fi
 
+    ARMCC_FLAGS="-march=armv7-a -mfpu=neon-vfpv4 -funsafe-math-optimizations"
+    ARMCC_PREFIX="${SRC}/tflite_toolchain/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf/bin/arm-linux-gnueabihf-"
+
+    TFLITE_CROSS_BUILD_OPTIONS="-DCMAKE_SYSTEM_NAME=Linux \
+   -DCMAKE_C_COMPILER=${ARMCC_PREFIX}gcc \
+   -DCMAKE_CXX_COMPILER=${ARMCC_PREFIX}g++ \
+   -DCMAKE_SYSTEM_PROCESSOR=armv7 \
+   -DCMAKE_C_FLAGS=${ARMCC_FLAGS} \
+   -DCMAKE_CC_FLAGS=${ARMCC_FLAGS} "
+
+fi
 
 ##############################################
 ### Build opencv
@@ -56,7 +67,7 @@ mkdir -p ${FINAL}/opencv-4.5.2
 
 cmake -D CMAKE_BUILD_TYPE=RELEASE \
   -D CMAKE_INSTALL_PREFIX=${FINAL}/opencv-4.5.2 \
-   ${CROSS_BUILD_OPTIONS} \
+   ${OPENCV_CROSS_BUILD_OPTIONS} \
   -D OPENCV_EXTRA_MODULES_PATH=${SRC}/opencv_contrib-4.5.2/modules \
   -D OPENCV_ENABLE_NONFREE=ON \
   -D BUILD_TESTS=OFF \
@@ -104,5 +115,19 @@ cd $LOCAL_PWD
 #
 #make $@
 #make install
-
 cd $LOCAL_PWD
+##############################################
+### Build opencv
+##############################################
+mkdir -p ${BUILD}/tflite && cd ${BUILD}/tflite
+mkdir -p ${FINAL}/tflite
+
+
+cmake -DCMAKE_BUILD_TYPE=Debug \
+   -DCMAKE_INSTALL_PREFIX=${FINAL}/tflite \
+   ${TFLITE_CROSS_BUILD_OPTIONS} \
+   ${SRC}/tensorflow/tensorflow/lite
+
+make $@
+make install
+
