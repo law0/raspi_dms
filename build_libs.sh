@@ -5,36 +5,35 @@ LOCAL_PWD=$(pwd)
 echo $LOCAL_PWD
 
 SRC=${LOCAL_PWD}/src
-FINAL=${LOCAL_PWD}/out/final
-PKGCONFIG=${FINAL}/pkgconfig
-BUILD=${LOCAL_PWD}/out/build
 
-mkdir -p $FINAL
-mkdir -p $PKGCONFIG
-mkdir -p $BUILD
+# default value
+DEFAULT_TARGET="arm-linux-gnueabihf"
+DEFAULT_TOOLCHAIN_FILE=${SRC}/toolchain/arm-gnueabihf.toolchain.cmake
 
-CROSS_BUILD_OPTIONS=""
-TOOLCHAIN_FILE=${SRC}/toolchain/arm-gnueabihf.toolchain.cmake
-
-
-if [ -n "$TOOLCHAIN_FILE_OVERRIDE" ]
+if [ -n "$TARGET" ] && [ "${TARGET,,}" == "local" ] # ${var,,} = lowercase(var)
 then
-    if [ "$TOOLCHAIN_FILE_OVERRIDE" != "LOCAL" ]
-    then
-        TOOLCHAIN_FILE=$TOOLCHAIN_FILE_OVERRIDE
-    
-    else #LOCAL BUILD
-        TOOLCHAIN_FILE=""
-    fi
+    TARGET="local"
+    TOOLCHAIN_FILE=""
+else
+    TARGET="${DEFAULT_TARGET}"
+    TOOLCHAIN_FILE="${DEFAULT_TOOLCHAIN_FILE}"
 fi
 
-if [ -n "$TOOLCHAIN_FILE" ]
+if [ -n "$TOOLCHAIN_FILE" ] && [ "${TARGET}" == "arm-linux-gnueabihf" ]
 then
-
     OPENCV_CROSS_BUILD_OPTIONS="-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE} \
     -D ENABLE_NEON=ON \
     -D ENABLE_VFPV3=ON "
 fi
+
+
+FINAL=${LOCAL_PWD}/out/${TARGET}/final
+BUILD=${LOCAL_PWD}/out/${TARGET}/build
+PKGCONFIG=${FINAL}/pkgconfig
+
+mkdir -p $FINAL
+mkdir -p $BUILD
+mkdir -p $PKGCONFIG
 
 ##############################################
 ### Build opencv
@@ -49,7 +48,7 @@ cmake -D CMAKE_BUILD_TYPE=RELEASE \
   -D BUILD_TESTS=OFF \
   -D BUILD_DOCS=OFF \
   -D BUILD_EXAMPLES=ON \
-  -D BUILD_LIST="core,highgui,videoio,dnn,objdetect" i\
+  -D BUILD_LIST="core,highgui,videoio,dnn,objdetect" \
   -D WITH_GTK_2_X=ON \
    ${SRC}/opencv-4.5.2
 

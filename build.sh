@@ -4,31 +4,22 @@ LOCAL_PWD=$(pwd)
 
 echo $LOCAL_PWD
 
-mkdir -p out/staging/
-mkdir -p out/final/
-mkdir -p out/final/pkgconfig/
-mkdir -p out/build/
-
 SRC=${LOCAL_PWD}/src
-STAGING=${LOCAL_PWD}/out/staging
-FINAL=${LOCAL_PWD}/out/final
-PKGCONFIG=${FINAL}/pkgconfig
-BUILD=${LOCAL_PWD}/out/build
 
-TOOLCHAIN_FILE_OPTION=""
-TOOLCHAIN_FILE=${SRC}/toolchain/arm-gnueabihf.toolchain.cmake
+# default value
+DEFAULT_TARGET="arm-linux-gnueabihf"
+DEFAULT_TOOLCHAIN_FILE=${SRC}/toolchain/arm-gnueabihf.toolchain.cmake
 
-if [ -n "$TOOLCHAIN_FILE_OVERRIDE" ]
+if [ -n "$TARGET" ] && [ "${TARGET,,}" == "local" ] # ${var,,} = lowercase(var)
 then
-    if [ "$TOOLCHAIN_FILE_OVERRIDE" != "LOCAL" ]
-    then
-        TOOLCHAIN_FILE=$TOOLCHAIN_FILE_OVERRIDE
-    else
-        TOOLCHAIN_FILE=""
-    fi
+    TARGET="local"
+    TOOLCHAIN_FILE=""
+else
+    TARGET="${DEFAULT_TARGET}"
+    TOOLCHAIN_FILE="${DEFAULT_TOOLCHAIN_FILE}"
 fi
 
-if [ -n "$TOOLCHAIN_FILE" ]
+if [ -n "$TOOLCHAIN_FILE" ] && [ "${TARGET}" == "arm-linux-gnueabihf" ]
 then
     ARMCC_FLAGS="-march=armv7-a -mfpu=neon-vfpv4 -funsafe-math-optimizations"
     TOOLCHAIN_FILE_OPTION="-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}
@@ -36,8 +27,16 @@ then
     -DCMAKE_SYSTEM_PROCESSOR=armv7 \
     -DCMAKE_C_FLAGS=${ARMCC_FLAGS} \
     -DCMAKE_CC_FLAGS=${ARMCC_FLAGS} "
-
 fi
+
+
+FINAL=${LOCAL_PWD}/out/${TARGET}/final
+BUILD=${LOCAL_PWD}/out/${TARGET}/build
+PKGCONFIG=${FINAL}/pkgconfig
+
+mkdir -p $FINAL
+mkdir -p $BUILD
+mkdir -p $PKGCONFIG
 
 ##############################################
 ### Build raspidms
