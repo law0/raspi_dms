@@ -6,11 +6,6 @@
 #include <opencv2/dnn.hpp>
 #include <opencv2/core/utility.hpp>
 
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model.h"
-#include "tensorflow/lite/optional_debug_tools.h"
-
 #include <time.h>
 #include <iostream>
 #include <string>
@@ -49,8 +44,6 @@ int main(int argc, char**argv) {
         printHelp();
         return 0;
     }
-
-    tflite::ops::builtin::BuiltinOpResolver resolver;
 
     const bool multithread = true;
     const std::string video_path(argv[1]);
