@@ -6,11 +6,6 @@
 #include <opencv2/dnn.hpp>
 #include <opencv2/core/utility.hpp>
 
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model.h"
-#include "tensorflow/lite/optional_debug_tools.h"
-
 #include <time.h>
 #include <iostream>
 #include <string>
@@ -39,7 +34,7 @@ const uint32_t IN_BUFFER_SIZE = 4;
 const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
 
 void printHelp () {
-    std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
+    std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|tflite|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
 }
 
 typedef std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> DetectFaceFunc;
@@ -49,8 +44,6 @@ int main(int argc, char**argv) {
         printHelp();
         return 0;
     }
-
-    tflite::ops::builtin::BuiltinOpResolver resolver;
 
     const bool multithread = true;
     const std::string video_path(argv[1]);
