@@ -5,6 +5,7 @@
 #include "DetectFaces/DetectFacesMyYolo.h"
 #include "DetectFaces/DetectFacesResnetCaffe.h"
 #include "DetectFaces/DetectFacesHoG.h"
+#include "DetectFaces/DetectFacesTflite.h"
 
 #include "Utils.h"
 
@@ -85,6 +86,11 @@ std::shared_ptr<IDetectFaces> DetectFacesStage::getNextDetector(int threadId) {
         else if (m_detectorName == "hog")
         {
             detector.reset(new DetectFacesHoG());
+            m_detectors.insert({threadId, detector});
+        }
+        else if (m_detectorName == "tflite")
+        {
+            detector.reset(new DetectFacesTflite(TF_LITE_MODEL_PATH));
             m_detectors.insert({threadId, detector});
         }
         else if (m_detectorName == "empty")

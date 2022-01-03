@@ -1,9 +1,3 @@
-// C++ GUI test program to read an image and convert it to gray with OpenCV 4
-// You can compile the program with:
-//     g++ gui_cpp_test.cpp -o gui_cpp_test `pkg-config --cflags --libs opencv`
-// Be sure that you have an image file named "lake.jpg" in the work folder and run the code with:
-//     ./gui_cpp_test
-
 #include <opencv2/core.hpp>
 #include <opencv2/objdetect.hpp>
 #include <opencv2/opencv.hpp>
@@ -40,7 +34,7 @@ const uint32_t IN_BUFFER_SIZE = 4;
 const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
 
 void printHelp () {
-    std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
+    std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|tflite|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
 }
 
 typedef std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> DetectFaceFunc;
