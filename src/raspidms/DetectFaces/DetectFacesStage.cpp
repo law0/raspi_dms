@@ -28,12 +28,12 @@ DetectFacesStage::DetectFacesStage(const std::string& detectorName,
 }
 
 void DetectFacesStage::operator()(int threadId) {
-    std::cout << "-----------> DetectFacesStage thread id " << threadId << std::endl;
+    std::cout << "----> DetectFacesStage thread id " << threadId << std::endl;
     std::shared_ptr<IDetectFaces> detector = getNextDetector(threadId);
 
-    //Don't wait for frame, there should be plenty
     cv::Mat frame;
-    if(! m_inFrames->pop_front_no_wait(frame) || frame.empty()) {
+    m_inFrames->pop_front_wait(frame);
+    if (frame.empty()) {
         std::cout << "DetectFacesStage: " << "empty frame" << std::endl;
         return;
     }
@@ -44,6 +44,8 @@ void DetectFacesStage::operator()(int threadId) {
 
     // Exponential moving average
     m_averageTime = m_averageAlpha * timeMark(threadId) + (1. - m_averageAlpha) * m_averageTime;
+
+    std::cout << "DetectFacesStage average time: " << m_averageTime << std::endl;
 
     m_outRects->push_back(pl);
 

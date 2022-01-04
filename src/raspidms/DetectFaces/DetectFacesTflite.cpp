@@ -14,7 +14,10 @@
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/optional_debug_tools.h"
 
+
+#include <chrono>
 #include <map>
+#include <thread>
 #include <vector>
 
 /*
@@ -140,7 +143,7 @@ void DetectFacesTflite::printModelIOTensorsInfo() {
 }
 
 PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
-    std::cout << "Tflite" << std::endl;
+    //std::cout << "Tflite" << std::endl;
     PointsList faces;
 
     if(frame.empty()) {
@@ -276,15 +279,46 @@ PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
         }
     }
 
-    //std::cout << __FUNCTION__ << " faces.size() = " << faces.size() << std::endl;
-    for (auto vec : faces) {
-        std::cout << "head (" << vec[0] << ", " << vec[1] << ")" << std::endl;
-                  /*<< "r eye, l eye, nose, mouth, r ear, l ear ("
-                  << vec[2] << ", " << vec[3] << ", " << vec[4] << ", " << vec[5]
-                  << vec[6] << ", " << vec[7] << ")" << std::endl;*/
+    if (faces.empty())
+        return faces;
+
+    // Eliminate excessive detections
+    PointsList final_faces;
+    final_faces.push_back(faces.back());
+    faces.pop_back();
+
+     if (faces.size() > 0) {
+        // O(n^2), but there shouldn't be much faces anyway (~3 faces max)
+        for (int i = 0; i < faces.size(); ++i) {
+            for (int j = 0; j < final_faces.size(); ++j) {
+                auto a = cv::Rect(faces[i][0], faces[i][1]);
+                auto b = cv::Rect(final_faces[j][0], final_faces[j][1]);
+
+                // If faces overlap much with another
+                if (iou_score(a, b) > 0.6) {
+                    // Then they detect the same face, take the biggest bounding box
+                    if (a.area() > b.area()) {
+                        final_faces[j] = faces[i];
+                    } else {
+                        continue;
+                    }
+                } else {
+                    // If no overlap, it is a new face
+                    final_faces.push_back(faces[i]);
+                }
+            }
+        }
     }
 
-    return faces;
+    //std::cout << __FUNCTION__ << " final_faces.size() = " << final_faces.size() << std::endl;
+    /*for (auto vec : final_faces) {
+        std::cout << "head (" << vec[0] << ", " << vec[1] << ")" << std::endl
+                  << "r eye, l eye, nose, mouth, r ear, l ear ("
+                  << vec[2] << ", " << vec[3] << ", " << vec[4] << ", " << vec[5]
+                  << vec[6] << ", " << vec[7] << ")" << std::endl;
+    }*/
+
+    return final_faces;
 }
 
 void DetectFacesTflite::generate_anchors() {
@@ -329,4 +363,10 @@ void DetectFacesTflite::generate_anchors() {
         }
         layer_id = last_same_stride_layer;
     };
+}
+
+float DetectFacesTflite::iou_score(const cv::Rect& a, const cv::Rect& b) const {
+    float intersection_area = static_cast<float>((a & b).area());
+    float union_area = static_cast<float>(a.area() + b.area() - intersection_area);
+    return intersection_area / union_area;
 }

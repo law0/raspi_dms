@@ -50,6 +50,7 @@ private:
     std::shared_ptr<SharedQueue<cv::Mat>> m_inFrames;
     std::shared_ptr<SharedQueue<PointsList>> m_regionOfInterests;
     std::shared_ptr<SharedQueue<PointsList>> m_outFaceFeatures;
+    PointsList m_lastValidRoi;
     std::unordered_map<int /*threadId*/, std::shared_ptr<IFaceFeatures>> m_detectors;
     std::mutex m_mutex;
     double m_averageTime;

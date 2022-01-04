@@ -30,14 +30,15 @@
 
 #include "Scheduler.h"
 
-const uint32_t IN_BUFFER_SIZE = 4;
-const uint32_t MAX_THREAD = std::thread::hardware_concurrency();
+const uint32_t IN_BUFFER_SIZE = 8;
 
 void printHelp () {
     std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|tflite|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
 }
 
 typedef std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> DetectFaceFunc;
+
+typedef std::chrono::duration<double, std::ratio<1, 120>> FrameDuration;
 
 int main(int argc, char**argv) {
     if (argc < 3) {
@@ -68,7 +69,6 @@ int main(int argc, char**argv) {
 
     // Out queue of rects to draw (and region of interests for feature detection)
     std::shared_ptr<SharedQueue<PointsList>> rectsQueue(new SharedQueue<PointsList>());
-    std::shared_ptr<SharedQueue<PointsList>> meanRectsQueue(new SharedQueue<PointsList>());
 
     // Face feature to be drawn
     std::shared_ptr<SharedQueue<PointsList>> faceFeaturesQueue(new SharedQueue<PointsList>());
@@ -76,42 +76,23 @@ int main(int argc, char**argv) {
     // Responsible of detecting faces, needs in frames, and ouputs out rectangles
     DetectFacesStage detectFacesStage(firstDetector, inputFrameQueue, rectsQueue);
 
-
-    meanRectsQueue->push_back({{cv::Point2f(), cv::Point2f()}});
-
-    // This is temporary
-    // calculate the exp moving average of rects in rectsQueue and put it
-    // in meanRectsQueue (which faceFeaturesStage will pull from)
-    // This avoid jumps in region of interest
-    // stuck to only one rects though
-    auto rectsMeanCalculator = [&](int) {
-            PointsList dfr;
-            PointsList& mdfr = meanRectsQueue->front_wait();
-            std::vector<cv::Point2f>& rect = mdfr[0];
-            double alpha = 0.7;
-            if (rectsQueue->pop_front_no_wait(dfr) && dfr.size() > 0) {
-                rect[0].x = alpha * dfr[0][0].x + (1. - alpha) * rect[0].x;
-                rect[0].y = alpha * dfr[0][0].y + (1. - alpha) * rect[0].y;
-                rect[1].x = alpha * dfr[0][1].x + (1. - alpha) * rect[1].x;
-                rect[1].y = alpha * dfr[0][1].y + (1. - alpha) * rect[1].y;
-            }
-    };
-
-
     // Responsible for detecting face feature (landmarks)
-    FaceFeaturesStage faceFeaturesStage("dlib_68", inputFrameQueue, meanRectsQueue, faceFeaturesQueue);
+    FaceFeaturesStage faceFeaturesStage("dlib_68", inputFrameQueue, rectsQueue, faceFeaturesQueue);
 
     Scheduler scheduler;
 
-    scheduler.addFunc(std::ref(detectFacesStage));
-    scheduler.addFunc(rectsMeanCalculator);
-    scheduler.addFunc(std::ref(faceFeaturesStage));
+    scheduler.addFunc([&](int threadId) {
+        detectFacesStage(threadId);
+        faceFeaturesStage(threadId);
+    });
 
     PointsList rects;
     PointsList face_features;
 
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     cv::Mat frame;
+    auto last = std::chrono::high_resolution_clock::now();
+    auto now = last;
     for(;;)
     {
         if (cv::pollKey() >= 0) {
@@ -119,10 +100,10 @@ int main(int argc, char**argv) {
         }
 
         // lose frames if too slow
-        if (inputFrameQueue->size() >= IN_BUFFER_SIZE)
+        if (inputFrameQueue->size() > IN_BUFFER_SIZE)
             inputFrameQueue->pop_front_no_wait();
 
-        if (inputFrameQueue->size() < IN_BUFFER_SIZE) {
+        while (inputFrameQueue->size() < IN_BUFFER_SIZE) {
             // wait for a new frame from camera and store it into 'frame'
             cap.read(frame);
             // check if we succeeded
@@ -135,6 +116,14 @@ int main(int argc, char**argv) {
             inputFrameQueue->push_back(frame);
         }
 
+        //120 fps max, otherwise we may starve of frames
+        FrameDuration duration = now - last;
+        if (duration.count() < 1.0)
+            std::this_thread::sleep_for(FrameDuration(1.0 - duration.count()));
+
+        last = now;
+        now = std::chrono::high_resolution_clock::now();
+
         if (multithread) {
             scheduler.schedule();
         } else {
@@ -143,8 +132,9 @@ int main(int argc, char**argv) {
         }
 
         PointsList bounding_boxes;
-        if (meanRectsQueue->front_no_wait(bounding_boxes))
+        if (rectsQueue->front_no_wait(bounding_boxes) && bounding_boxes.size() > 0) {
             rects = bounding_boxes;
+        }
 
         for(const auto & points : rects) {
             if (points.size() > 1)

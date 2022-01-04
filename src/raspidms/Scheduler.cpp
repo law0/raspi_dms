@@ -9,7 +9,7 @@
 Scheduler::Scheduler()
     : m_funcMap(),
       m_idPQ([](id_timing_t left, id_timing_t right) { return left.first > right.first; }),
-      m_threadPool(std::thread::hardware_concurrency() - 1,
+      m_threadPool(4,
                    std::bind(&Scheduler::timingCb,
                    this,
                    std::placeholders::_1,
@@ -22,7 +22,7 @@ Scheduler::~Scheduler() {
     m_threadPool.stop();
 }
 
-long Scheduler::addFunc(SchedFunc func, int priority) {
+long Scheduler::addFunc(SchedFunc func, double priority) {
     long id = getUniqueId();
     m_funcMap.insert({id, {func, priority, 0.}});
     m_idPQ.push({0., id});

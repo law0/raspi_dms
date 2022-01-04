@@ -18,6 +18,7 @@ public:
 
 private:
     void generate_anchors();
+    float iou_score(const cv::Rect& a, const cv::Rect& b) const;
 
     const long m_id;
     std::unique_ptr<tflite::Interpreter> m_interpreter;
