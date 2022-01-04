@@ -6,10 +6,9 @@ FaceFeaturesEmpty::FaceFeaturesEmpty(const std::string& path) : IFaceFeatures(pa
 
 }
 
-FaceFeaturesResult FaceFeaturesEmpty::operator()(const cv::Mat& frame,
+PointsList FaceFeaturesEmpty::operator()(const cv::Mat& frame,
                                                 std::vector<cv::Rect>& roi) {
-    timeMark(m_id);
-    std::vector<std::vector<cv::Point2i>> ret;
+    PointsList ret;
     std::cerr << "Warning: using FaceFeatureEmpty" << std::endl;
-    return std::make_pair(ret, timeMark(m_id));
+    return ret;
 }

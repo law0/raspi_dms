@@ -9,7 +9,7 @@ class FaceFeaturesDlib : public IFaceFeatures
 public:
     FaceFeaturesDlib(const std::string & path);
 
-    virtual FaceFeaturesResult operator()(const cv::Mat & frame,
+    virtual PointsList operator()(const cv::Mat & frame,
                                           std::vector<cv::Rect>& roi) override;
 
 

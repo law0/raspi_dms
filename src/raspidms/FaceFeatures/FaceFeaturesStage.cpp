@@ -10,8 +10,8 @@ const double AVERAGE_ALPHA = 0.1;
 
 FaceFeaturesStage::FaceFeaturesStage(const std::string& detectorName,
                                      std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
-                                     std::shared_ptr<SharedQueue<DetectedFacesResult>> regionOfInterests,
-                                     std::shared_ptr<SharedQueue<FaceFeaturesResult>> outFaceFeatures)
+                                     std::shared_ptr<SharedQueue<PointsList>> regionOfInterests,
+                                     std::shared_ptr<SharedQueue<PointsList>> outFaceFeatures)
     : m_detectorName(detectorName),
       m_inFrames(inFrames),
       m_regionOfInterests(regionOfInterests),
@@ -34,13 +34,13 @@ void FaceFeaturesStage::operator()(int threadId) {
         return;
     }
 
-    DetectedFacesResult dfr;
-    if(! m_regionOfInterests->front_no_wait(dfr)) {
+    PointsList pl_rois;
+    if(! m_regionOfInterests->front_no_wait(pl_rois)) {
         std::cout << "FaceFeaturesStage: " << "RoI queue empty: " << m_regionOfInterests->size() << std::endl;
         return;
     }
 
-    if (dfr.first.size() == 0) {
+    if (pl_rois.size() == 0 || pl_rois[0].size() < 2) {
         std::cout << "FaceFeaturesStage: " << "Void RoI ! This should not happen !" << std::endl;
 
         // Normally no empty RoI should be pushed into the RoI queue !
@@ -50,17 +50,23 @@ void FaceFeaturesStage::operator()(int threadId) {
 
     } else {
 
+        std::vector<cv::Rect> rois;
+        for (auto& head : pl_rois) {
+            rois.push_back(cv::Rect(head[0], head[1]));
+        }
+
+        timeMark(threadId);
         // Detect the faces features
-        FaceFeaturesResult ffr = (*detector)(frame, dfr.first);
+        PointsList faces_features = (*detector)(frame, rois);
 
         // Exponential moving average
-        m_averageTime = m_averageAlpha * ffr.second + (1. - m_averageAlpha) * m_averageTime;
+        m_averageTime = m_averageAlpha * timeMark(threadId) + (1. - m_averageAlpha) * m_averageTime;
 
 
-        if (ffr.first.size() == 0) {
+        if (faces_features.size() == 0) {
             std::cout << "FaceFeaturesStage: " << "No face feature detected" << std::endl;
         } else {
-            m_outFaceFeatures->push_back(ffr);
+            m_outFaceFeatures->push_back(faces_features);
         }
     }
 

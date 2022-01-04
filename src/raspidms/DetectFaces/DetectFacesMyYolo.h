@@ -7,7 +7,7 @@ class DetectFacesMyYolo : public IDetectFaces
 {
 public:
     DetectFacesMyYolo(const std::string & path);
-    virtual DetectedFacesResult operator()(const cv::Mat & frame) override;
+    virtual PointsList operator()(const cv::Mat & frame) override;
 
 private:
     //warning dnn::Net seems not reentrant

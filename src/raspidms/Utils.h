@@ -48,7 +48,7 @@ inline long getUniqueId() {
  */
 inline cv::Rect dlibRectangleToOpenCV(const dlib::rectangle & r)
 {
-    return cv::Rect(cv::Point2i(r.left(), r.top()), cv::Point2i(r.right() + 1, r.bottom() + 1));
+    return cv::Rect(cv::Point2f(r.left(), r.top()), cv::Point2f(r.right() + 1, r.bottom() + 1));
 }
 
 /**

@@ -8,7 +8,7 @@ class FaceFeaturesEmpty : public IFaceFeatures
 public:
     FaceFeaturesEmpty(const std::string& path = std::string());
 
-    virtual FaceFeaturesResult operator()(const cv::Mat & frame,
+    virtual PointsList operator()(const cv::Mat & frame,
                                           std::vector<cv::Rect>& roi) override;
 private:
     const long m_id;

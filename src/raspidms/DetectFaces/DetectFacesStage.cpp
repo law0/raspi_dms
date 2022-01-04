@@ -15,7 +15,7 @@ const double AVERAGE_ALPHA = 0.1;
 
 DetectFacesStage::DetectFacesStage(const std::string& detectorName,
                                    std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
-                                   std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects)
+                                   std::shared_ptr<SharedQueue<PointsList>> outRects)
     : m_detectorName(detectorName),
       m_inFrames(inFrames),
       m_outRects(outRects),
@@ -38,18 +38,14 @@ void DetectFacesStage::operator()(int threadId) {
         return;
     }
 
-
+    timeMark(threadId);
     // Detect the faces
-    DetectedFacesResult dfr = (*detector)(frame);
+    PointsList pl = (*detector)(frame);
 
     // Exponential moving average
-    m_averageTime = m_averageAlpha * dfr.second + (1. - m_averageAlpha) * m_averageTime;
+    m_averageTime = m_averageAlpha * timeMark(threadId) + (1. - m_averageAlpha) * m_averageTime;
 
-    if (dfr.first.size() == 0) {
-        //std::cout << "DetectFacesStage: detector return empty faces vector" << std::endl;
-    }
-
-    m_outRects->push_back(dfr);
+    m_outRects->push_back(pl);
 
     if (m_outRects->size() > MAX_OUT_QUEUE_SIZE)
         m_outRects->pop_front_no_wait();

@@ -1,6 +1,19 @@
 #ifndef ISTAGE_H
 #define ISTAGE_H
 
+#include <opencv2/core/types.hpp>
+
+#include <vector>
+
+/**
+ * @brief PointsList is the generic return type for detection stages
+ * A cv::Point2f will represent a point in the frame
+ * Bounding box will be returned via this type with the convention : {top-left-point, bottom-right-point}
+ * Note that other points may be returned after a bounding box,
+ * example {top-left-point, bottom-right-point, right-eye-point, left-eye-point, etc.}
+ */
+typedef std::vector<std::vector<cv::Point2f>> PointsList;
+
 class IStage {
 public:
     virtual ~IStage() {}

@@ -12,10 +12,8 @@ DetectFacesHoG::DetectFacesHoG(const std::string & path)
 
 }
 
-DetectedFacesResult DetectFacesHoG::operator()(const cv::Mat & frame) {
-    timeMark(m_id);
-
-    std::vector<cv::Rect> faces;
+PointsList DetectFacesHoG::operator()(const cv::Mat & frame) {
+    PointsList faces;
 
     cv::Mat frameCopy = frame.clone();
     cv::resize(frame, frameCopy, cv::Size(224, 224));
@@ -37,8 +35,8 @@ DetectedFacesResult DetectFacesHoG::operator()(const cv::Mat & frame) {
         cvRect.y /= scale_y;
         cvRect.width /= scale_x;
         cvRect.height /= scale_y;
-        faces.push_back(cvRect);
+        faces.push_back({cvRect.tl(), cvRect.br()});
     });
 
-    return std::make_pair(faces, timeMark(m_id));
+    return faces;
 }

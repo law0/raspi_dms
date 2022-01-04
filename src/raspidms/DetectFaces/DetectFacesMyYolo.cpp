@@ -17,15 +17,14 @@ DetectFacesMyYolo::DetectFacesMyYolo(const std::string & path) :
 
 }
 
-DetectedFacesResult DetectFacesMyYolo::operator()(const cv::Mat & frame) {
+PointsList DetectFacesMyYolo::operator()(const cv::Mat & frame) {
     std::cout << "yolo" << std::endl;
     float confThreshold = 0.5;
     float classThreshold = 0.5;
-    timeMark(m_id);
-    std::vector<cv::Rect> faces;
+    PointsList faces;
 
     if(frame.empty())
-        return std::make_pair(faces, 0.0);
+        return faces;
 
     cv::Mat frameCopy = frame.clone();
     cv::resize(frame, frameCopy, cv::Size(224, 224));
@@ -45,8 +44,6 @@ DetectedFacesResult DetectFacesMyYolo::operator()(const cv::Mat & frame) {
 
     m_net.setInput(blob);
     cv::Mat outs = m_net.forward();
-
-    auto t = timeMark(m_id);
 
     // Network produces output blob with a shape 1x49x(1+4*5)
     // 49 Cells, and per cell : 1 class, 4 boxes, 1 confidence + 4 coords (x,y,w,h) per box.
@@ -99,6 +96,8 @@ DetectedFacesResult DetectFacesMyYolo::operator()(const cv::Mat & frame) {
     height = (float)(height * 224);
     float left   = (float)(data[index_max + j_max + 2] * 32) + (float)cell_x - width / 2. ;
     float top    = (float)(data[index_max + j_max + 3] * 32) + (float)cell_y - height / 2. ;
+    float right  = left + width;
+    float bottom = top + height;
 
     /*std::cout << "Class " << class_max << ", conf " << max_conf << ", ("
               << left << ", "
@@ -107,7 +106,7 @@ DetectedFacesResult DetectFacesMyYolo::operator()(const cv::Mat & frame) {
               << height << ")"
               << std::endl;*/
 
-    faces.push_back(cv::Rect(left / scale_x, top / scale_y, width / scale_x, height / scale_y));
+    faces.push_back({cv::Point2f(left / scale_x, top / scale_y), cv::Point2f(right / scale_x, bottom / scale_y)});
 
-    return std::make_pair(faces, t);
+    return faces;
 }

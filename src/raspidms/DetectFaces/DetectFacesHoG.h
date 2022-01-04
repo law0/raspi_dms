@@ -16,7 +16,7 @@ class DetectFacesHoG : public IDetectFaces
 {
 public:
     DetectFacesHoG(const std::string & path = std::string());
-    virtual DetectedFacesResult operator()(const cv::Mat & frame) override;
+    virtual PointsList operator()(const cv::Mat & frame) override;
 
 private:
 

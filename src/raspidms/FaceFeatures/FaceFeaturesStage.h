@@ -24,8 +24,8 @@ class FaceFeaturesStage : public IStage
 public:
     FaceFeaturesStage(const std::string& detectorName,
                       std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
-                      std::shared_ptr<SharedQueue<DetectedFacesResult>> regionOfInterests,
-                      std::shared_ptr<SharedQueue<FaceFeaturesResult>> outFaceFeatures);
+                      std::shared_ptr<SharedQueue<PointsList>> regionOfInterests,
+                      std::shared_ptr<SharedQueue<PointsList>> outFaceFeatures);
     FaceFeaturesStage(const FaceFeaturesStage&) = delete;
 
     /**
@@ -48,8 +48,8 @@ private:
 
     const std::string m_detectorName;
     std::shared_ptr<SharedQueue<cv::Mat>> m_inFrames;
-    std::shared_ptr<SharedQueue<DetectedFacesResult>> m_regionOfInterests;
-    std::shared_ptr<SharedQueue<FaceFeaturesResult>> m_outFaceFeatures;
+    std::shared_ptr<SharedQueue<PointsList>> m_regionOfInterests;
+    std::shared_ptr<SharedQueue<PointsList>> m_outFaceFeatures;
     std::unordered_map<int /*threadId*/, std::shared_ptr<IFaceFeatures>> m_detectors;
     std::mutex m_mutex;
     double m_averageTime;

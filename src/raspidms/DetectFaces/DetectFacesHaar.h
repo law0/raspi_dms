@@ -7,7 +7,7 @@ class DetectFacesHaar : public IDetectFaces
 {
 public:
     DetectFacesHaar(const std::string & path);
-    virtual DetectedFacesResult operator()(const cv::Mat & frame) override;
+    virtual PointsList operator()(const cv::Mat & frame) override;
 
 private:
 

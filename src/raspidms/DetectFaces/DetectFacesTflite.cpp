@@ -139,13 +139,14 @@ void DetectFacesTflite::printModelIOTensorsInfo() {
     }
 }
 
-DetectedFacesResult DetectFacesTflite::operator()(const cv::Mat & frame) {
+PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
     std::cout << "Tflite" << std::endl;
-    timeMark(m_id);
-    std::vector<cv::Rect> faces;
+    PointsList faces;
 
-    if(frame.empty())
-        return std::make_pair(faces, 0.0);
+    if(frame.empty()) {
+        std::cout << "Empty frame !" << std::endl;
+        return faces;
+    }
 
     if (!m_interpreter) {
         auto& model = getModel(m_path);
@@ -153,8 +154,9 @@ DetectedFacesResult DetectFacesTflite::operator()(const cv::Mat & frame) {
 
         tflite::InterpreterBuilder builder(model, resolver);
         if (builder(&m_interpreter) != kTfLiteOk) {
+            std::cout << "Error building interpreter" << std::endl;
             m_interpreter.reset();
-            return std::make_pair(faces, 0.0);
+            return faces;
         } else {
             printModelIOTensorsInfo();
         }
@@ -171,7 +173,8 @@ DetectedFacesResult DetectFacesTflite::operator()(const cv::Mat & frame) {
 
     if (m_interpreter->AllocateTensors() != kTfLiteOk) {
         m_interpreter.reset();
-        return std::make_pair(faces, 0.0);
+        std::cout << "Error allocating tensors" << std::endl;
+        return faces;
     }
 
     float* data = reinterpret_cast<float*>(frameCopy.data);
@@ -193,8 +196,10 @@ DetectedFacesResult DetectFacesTflite::operator()(const cv::Mat & frame) {
     float* output_f32_0 = m_interpreter->typed_output_tensor<float>(0);
     float* output_f32_1 = m_interpreter->typed_output_tensor<float>(1);
 
-    if (!output_f32_0 || !output_f32_1)
-        return std::make_pair(faces, 0.0);
+    if (!output_f32_0 || !output_f32_1) {
+        std::cout << "Error output tensors" << std::endl;
+        return faces;
+    }
 
     const float x_scale = kOutputParameters.at("x_scale");
     const float y_scale = kOutputParameters.at("y_scale");
@@ -202,6 +207,11 @@ DetectedFacesResult DetectFacesTflite::operator()(const cv::Mat & frame) {
     const float w_scale = kOutputParameters.at("w_scale");
 
     const float threshold = kOutputParameters.at("min_score_thresh");
+
+    const int num_kp = kOutputParameters.at("num_keypoints");
+    const int num_val_per_kp = kOutputParameters.at("num_values_per_keypoint");
+
+    const bool reverse_output_order = kOutputParameters.at("reverse_output_order") > 0.f;
 
     for (size_t i = 0; i < static_cast<int>(kOutputParameters.at("num_boxes")); ++i) {
         if (output_f32_1[i] > threshold) {
@@ -211,7 +221,7 @@ DetectedFacesResult DetectFacesTflite::operator()(const cv::Mat & frame) {
             float x_center = output_f32_0[box_offset + 1];
             float h = output_f32_0[box_offset + 2];
             float w = output_f32_0[box_offset + 3];
-            if (kOutputParameters.at("reverse_output_order") > 0.) {
+            if (reverse_output_order) {
               x_center = output_f32_0[box_offset];
               y_center = output_f32_0[box_offset + 1];
               w = output_f32_0[box_offset + 2];
@@ -228,22 +238,53 @@ DetectedFacesResult DetectFacesTflite::operator()(const cv::Mat & frame) {
 
             const float left = (x_center - w / 2.f) * frame.cols;
             const float top = (y_center - h / 2.f) * frame.rows;
+            const float right = (x_center + w / 2.f) * frame.cols;
+            const float bottom = (y_center + h / 2.f) * frame.rows;
+
             const float width = w * frame.cols;
             const float height = h * frame.rows;
 
             if (width >= 0 && height >= 0 && left >= 0 && top >= 0) {
-                faces.push_back(cv::Rect(left, top, width, height));
+                std::vector<cv::Point2f> points;
+
+                //head box
+                points.push_back(cv::Point2f(left, top));
+                points.push_back(cv::Point2f(right, bottom));
+
+                //eyes, nose, mouth, ears, points
+                // Keypoints are unused for now
+                int keypoint_index = 0;
+                float keypoint_x = 0.f;
+                float keypoint_y = 0.f;
+                for (int j = 0; j < num_kp * num_val_per_kp ; j+= num_val_per_kp) {
+                    keypoint_index = box_offset + kOutputParameters.at("keypoint_coord_offset") + j;
+                    keypoint_y = output_f32_0[keypoint_index];
+                    keypoint_x = output_f32_0[keypoint_index + 1];
+                    if (reverse_output_order) {
+                        keypoint_x = output_f32_0[keypoint_index];
+                        keypoint_y = output_f32_0[keypoint_index + 1];
+                    }
+
+                    keypoint_x = keypoint_x / x_scale * w_anchor + m_anchors[i][0] * frame.cols;
+                    keypoint_y = keypoint_y / y_scale * h_anchor + m_anchors[i][1] * frame.rows;
+
+                    points.push_back(cv::Point2f(keypoint_x, keypoint_y));
+                }
+
+                faces.push_back(points);
             }
         }
     }
 
     //std::cout << __FUNCTION__ << " faces.size() = " << faces.size() << std::endl;
-    for (auto rect : faces) {
-        std::cout << "(" << rect.x << ", " << rect.y << "): (" << rect.width << ", " << rect.height << ")" << std::endl;
+    for (auto vec : faces) {
+        std::cout << "head (" << vec[0] << ", " << vec[1] << ")" << std::endl;
+                  /*<< "r eye, l eye, nose, mouth, r ear, l ear ("
+                  << vec[2] << ", " << vec[3] << ", " << vec[4] << ", " << vec[5]
+                  << vec[6] << ", " << vec[7] << ")" << std::endl;*/
     }
-    std::cout << "Time elapsed: " << timeMark(m_id, false) << std::endl;
 
-    return std::make_pair(faces, timeMark(m_id));
+    return faces;
 }
 
 void DetectFacesTflite::generate_anchors() {

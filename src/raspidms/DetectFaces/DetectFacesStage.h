@@ -15,6 +15,7 @@
 #include <opencv2/core/utility.hpp>
 
 #include "DetectFaces/IDetectFaces.h"
+#include "FaceFeatures/IFaceFeatures.h"
 #include "IStage.h"
 #include "SharedQueue.h"
 
@@ -31,7 +32,7 @@ class DetectFacesStage : public IStage
 public:
     DetectFacesStage(const std::string& detectorName,
                      std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
-                     std::shared_ptr<SharedQueue<DetectedFacesResult>> outRects);
+                     std::shared_ptr<SharedQueue<PointsList>> outRects);
     DetectFacesStage(const DetectFacesStage&) = delete;
 
     /**
@@ -54,7 +55,7 @@ private:
 
     const std::string m_detectorName;
     std::shared_ptr<SharedQueue<cv::Mat>> m_inFrames;
-    std::shared_ptr<SharedQueue<DetectedFacesResult>> m_outRects;
+    std::shared_ptr<SharedQueue<PointsList>> m_outRects;
     std::unordered_map<int /*threadId*/, std::shared_ptr<IDetectFaces>> m_detectors;
     std::mutex m_mutex;
     double m_averageTime;

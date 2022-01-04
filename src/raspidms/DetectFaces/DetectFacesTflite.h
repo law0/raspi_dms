@@ -12,7 +12,7 @@ class DetectFacesTflite : public IDetectFaces
 {
 public:
     DetectFacesTflite(const std::string & modelPath);
-    virtual DetectedFacesResult operator()(const cv::Mat & frame) override;
+    virtual PointsList operator()(const cv::Mat & frame) override;
 
     void printModelIOTensorsInfo();
 
