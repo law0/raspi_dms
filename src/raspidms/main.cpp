@@ -30,15 +30,13 @@
 
 #include "Scheduler.h"
 
-const uint32_t IN_BUFFER_SIZE = 8;
+const uint32_t MAX_IN_BUFFER_SIZE = 8;
 
 void printHelp () {
-    std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|tflite|resnetCaffe|yoloResnet18|yoloEffnetb0]" << std::endl;
+    std::cout << "raspidms [0|PATH_TO_VIDEO.mp4] [haar|tflite|resnetCaffe|yoloResnet18|yoloEffnetb0] [multithread]" << std::endl;
 }
 
 typedef std::function<std::pair<std::vector<cv::Rect>, double>(cv::Mat frame)> DetectFaceFunc;
-
-typedef std::chrono::duration<double, std::ratio<1, 120>> FrameDuration;
 
 int main(int argc, char**argv) {
     if (argc < 3) {
@@ -46,9 +44,10 @@ int main(int argc, char**argv) {
         return 0;
     }
 
-    const bool multithread = true;
     const std::string video_path(argv[1]);
     const std::string firstDetector = argc > 2 ? argv[2] : "";
+    const bool multithread = argc > 3 ? (std::string(argv[3]) == "multithread" ? true : false) : false;
+
 
     cv::VideoCapture cap;
 
@@ -91,8 +90,6 @@ int main(int argc, char**argv) {
 
     cv::namedWindow("Head", cv::WINDOW_AUTOSIZE);
     cv::Mat frame;
-    auto last = std::chrono::high_resolution_clock::now();
-    auto now = last;
     for(;;)
     {
         if (cv::pollKey() >= 0) {
@@ -100,29 +97,19 @@ int main(int argc, char**argv) {
         }
 
         // lose frames if too slow
-        if (inputFrameQueue->size() > IN_BUFFER_SIZE)
+        while (inputFrameQueue->size() > MAX_IN_BUFFER_SIZE)
             inputFrameQueue->pop_front_no_wait();
 
-        while (inputFrameQueue->size() < IN_BUFFER_SIZE) {
-            // wait for a new frame from camera and store it into 'frame'
-            cap.read(frame);
-            // check if we succeeded
-            if (frame.empty()) {
-                std::cerr << "ERROR! blank frame grabbed\n";
-                break;
-            }
-
-            //TODO consider no copy
-            inputFrameQueue->push_back(frame);
+        // wait for a new frame from camera and store it into 'frame'
+        cap.read(frame);
+        // check if we succeeded
+        if (frame.empty()) {
+            std::cerr << "ERROR! blank frame grabbed\n";
+            break;
         }
 
-        //120 fps max, otherwise we may starve of frames
-        FrameDuration duration = now - last;
-        if (duration.count() < 1.0)
-            std::this_thread::sleep_for(FrameDuration(1.0 - duration.count()));
-
-        last = now;
-        now = std::chrono::high_resolution_clock::now();
+        //TODO consider no copy
+        inputFrameQueue->push_back(frame);
 
         if (multithread) {
             scheduler.schedule();
@@ -131,7 +118,13 @@ int main(int argc, char**argv) {
             faceFeaturesStage(0);
         }
 
+
+        // emptying down to most recent bounding box
         PointsList bounding_boxes;
+        while (rectsQueue->size() > 1) {
+            rectsQueue->pop_front_no_wait(bounding_boxes);
+        }
+
         if (rectsQueue->front_no_wait(bounding_boxes) && bounding_boxes.size() > 0) {
             rects = bounding_boxes;
         }
@@ -144,8 +137,12 @@ int main(int argc, char**argv) {
                         3, 8, 0);
         }
 
-
+        // emptying down to most recent face features
         PointsList features;
+        while (faceFeaturesQueue->size() > 1) {
+            faceFeaturesQueue->pop_front_no_wait(features);
+        }
+
         if (faceFeaturesQueue->front_no_wait(features)) {
             if (features.size() > 0) {
                 face_features = features;

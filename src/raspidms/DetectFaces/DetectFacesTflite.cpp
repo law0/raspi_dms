@@ -216,6 +216,8 @@ PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
 
     const bool reverse_output_order = kOutputParameters.at("reverse_output_order") > 0.f;
 
+    const float bounding_box_scale_up = 2.f;
+
     for (size_t i = 0; i < static_cast<int>(kOutputParameters.at("num_boxes")); ++i) {
         if (output_f32_1[i] > threshold) {
             int box_offset = static_cast<int>(i * kOutputParameters.at("num_coords") + kOutputParameters.at("box_coord_offset"));
@@ -240,9 +242,9 @@ PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
             w = w / w_scale * w_anchor;
 
             const float left = (x_center - w / 2.f) * frame.cols;
-            const float top = (y_center - h / 2.f) * frame.rows;
+            const float top = (y_center - h / 2.f * bounding_box_scale_up) * frame.rows;
             const float right = (x_center + w / 2.f) * frame.cols;
-            const float bottom = (y_center + h / 2.f) * frame.rows;
+            const float bottom = (y_center + h / 2.f * bounding_box_scale_up) * frame.rows;
 
             const float width = w * frame.cols;
             const float height = h * frame.rows;

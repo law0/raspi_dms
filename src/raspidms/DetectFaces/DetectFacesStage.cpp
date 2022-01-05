@@ -32,7 +32,13 @@ void DetectFacesStage::operator()(int threadId) {
     std::shared_ptr<IDetectFaces> detector = getNextDetector(threadId);
 
     cv::Mat frame;
-    m_inFrames->pop_front_wait(frame);
+    // try pop without emptying
+    if (m_inFrames->size() > 1) {
+        m_inFrames->pop_front_wait(frame);
+    } else {
+        frame = m_inFrames->front_wait();
+    }
+
     if (frame.empty()) {
         std::cout << "DetectFacesStage: " << "empty frame" << std::endl;
         return;
