@@ -34,7 +34,7 @@ void printHelp () {
     << "raspidms OPTIONS" << std::endl
     << "with OPTIONS being ([] are optionals, rest is mandatory. A|B means A or B) :" << std::endl
     << "    -d|--face-detector haar|mediapipe|resnetCaffe|yoloResnet18|yoloEffnetb0" << std::endl
-    << "    -m|--face-mesh dlib_68" << std::endl
+    << "    -m|--face-mesh dlib_68|mediapipe" << std::endl
     << "    [-j|--multithread]" << std::endl
     << "    [-h|--help]" << std::endl
     << "    0|PATH_TO_VIDEO.mp4" << std::endl;
@@ -205,7 +205,7 @@ int main(int argc, char**argv) {
         if (face_features.size() > 0) {
             for(const auto & vecpoints : face_features) {
                 for(const auto & point : vecpoints) {
-                    circle(frame, point, 4, cv::Scalar(0, 0, 255), cv::FILLED, cv::LINE_8);
+                    circle(frame, point, 2, cv::Scalar(0, 0, 255), cv::FILLED, cv::LINE_8);
                 }
             }
         }

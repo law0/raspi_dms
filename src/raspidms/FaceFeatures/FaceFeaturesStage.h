@@ -18,6 +18,7 @@
 #include "IStage.h"
 
 const std::string DLIB_68_FACE_LANDMARKS_PATH = "../res/shape_predictor_68_face_landmarks.dat";
+const std::string MEDIAPIPE_FACE_LANDMARKS_PATH = "../res/face_landmark.tflite";
 
 class FaceFeaturesStage : public IStage
 {

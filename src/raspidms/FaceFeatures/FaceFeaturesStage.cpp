@@ -1,6 +1,8 @@
-#include "FaceFeatures/FaceFeaturesDlib.h"
-#include "FaceFeatures/FaceFeaturesEmpty.h"
 #include "FaceFeatures/FaceFeaturesStage.h"
+
+#include "FaceFeatures/FaceFeaturesDlib.h"
+#include "FaceFeatures/FaceFeaturesMediaPipe.h"
+#include "FaceFeatures/FaceFeaturesEmpty.h"
 
 #include "Utils.h"
 
@@ -87,6 +89,11 @@ std::shared_ptr<IFaceFeatures> FaceFeaturesStage::getNextDetector(int threadId) 
         if (m_detectorName == "dlib_68")
         {
             detector.reset(new FaceFeaturesDlib(DLIB_68_FACE_LANDMARKS_PATH));
+            m_detectors.insert({threadId, detector});
+        }
+        else if (m_detectorName == "mediapipe")
+        {
+            detector.reset(new FaceFeaturesMediaPipe(MEDIAPIPE_FACE_LANDMARKS_PATH));
             m_detectors.insert({threadId, detector});
         }
         else //do not insert detector if name unkown, but still return empty one
