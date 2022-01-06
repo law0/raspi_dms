@@ -33,7 +33,7 @@ void printHelp () {
     std::cout << "USAGE: " << std::endl
     << "raspidms OPTIONS" << std::endl
     << "with OPTIONS being ([] are optionals, rest is mandatory. A|B means A or B) :" << std::endl
-    << "    -d|--face-detector haar|tflite|resnetCaffe|yoloResnet18|yoloEffnetb0" << std::endl
+    << "    -d|--face-detector haar|mediapipe|resnetCaffe|yoloResnet18|yoloEffnetb0" << std::endl
     << "    -m|--face-mesh dlib_68" << std::endl
     << "    [-j|--multithread]" << std::endl
     << "    [-h|--help]" << std::endl

@@ -1,5 +1,5 @@
-#ifndef DETECTFACESTFLITE_H
-#define DETECTFACESTFLITE_H
+#ifndef DETECTFACESMEDIAPIPE_H
+#define DETECTFACESMEDIAPIPE_H
 
 #include <memory>
 #include <vector>
@@ -8,10 +8,10 @@
 
 #include "tensorflow/lite/interpreter.h"
 
-class DetectFacesTflite : public IDetectFaces
+class DetectFacesMediaPipe : public IDetectFaces
 {
 public:
-    DetectFacesTflite(const std::string & modelPath);
+    DetectFacesMediaPipe(const std::string & modelPath);
     virtual PointsList operator()(const cv::Mat & frame) override;
 
     void printModelIOTensorsInfo();
@@ -25,4 +25,4 @@ private:
     std::vector<std::vector<float>> m_anchors;
 };
 
-#endif // DETECTFACESTFLITE_H
+#endif // DETECTFACESMEDIAPIPE_H

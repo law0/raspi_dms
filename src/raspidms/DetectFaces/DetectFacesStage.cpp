@@ -5,7 +5,7 @@
 #include "DetectFaces/DetectFacesMyYolo.h"
 #include "DetectFaces/DetectFacesResnetCaffe.h"
 #include "DetectFaces/DetectFacesHoG.h"
-#include "DetectFaces/DetectFacesTflite.h"
+#include "DetectFaces/DetectFacesMediaPipe.h"
 
 #include "Utils.h"
 
@@ -92,9 +92,9 @@ std::shared_ptr<IDetectFaces> DetectFacesStage::getNextDetector(int threadId) {
             detector.reset(new DetectFacesHoG());
             m_detectors.insert({threadId, detector});
         }
-        else if (m_detectorName == "tflite")
+        else if (m_detectorName == "mediapipe")
         {
-            detector.reset(new DetectFacesTflite(TF_LITE_MODEL_PATH));
+            detector.reset(new DetectFacesMediaPipe(MEDIAPIPE_FD_MODEL_PATH));
             m_detectors.insert({threadId, detector});
         }
         else if (m_detectorName == "empty")

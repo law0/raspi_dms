@@ -1,4 +1,4 @@
-#include "DetectFaces/DetectFacesTflite.h"
+#include "DetectFaces/DetectFacesMediaPipe.h"
 
 #include "Utils.h"
 
@@ -79,7 +79,7 @@ static tflite::ops::builtin::BuiltinOpResolver& getResolver() {
     return resolver;
 }
 
-DetectFacesTflite::DetectFacesTflite(const std::string & modelPath)
+DetectFacesMediaPipe::DetectFacesMediaPipe(const std::string & modelPath)
     : IDetectFaces(modelPath),
       m_id(getUniqueId()),
       m_interpreter(nullptr),
@@ -95,7 +95,7 @@ DetectFacesTflite::DetectFacesTflite(const std::string & modelPath)
     }
 }
 
-void DetectFacesTflite::printModelIOTensorsInfo() {
+void DetectFacesMediaPipe::printModelIOTensorsInfo() {
     if (!m_interpreter) {
         std::cout << "Null interpreter" << std::endl;
         return;
@@ -142,7 +142,7 @@ void DetectFacesTflite::printModelIOTensorsInfo() {
     }
 }
 
-PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
+PointsList DetectFacesMediaPipe::operator()(const cv::Mat & frame) {
     //std::cout << "Tflite" << std::endl;
     PointsList faces;
 
@@ -163,6 +163,12 @@ PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
         } else {
             printModelIOTensorsInfo();
         }
+
+        if (m_interpreter->AllocateTensors() != kTfLiteOk) {
+            m_interpreter.reset();
+            std::cout << "Error allocating tensors" << std::endl;
+            return faces;
+        }
     }
 
     //std::cout << "frame (chan,c,r,t): " << frame.channels() << " " << frame.cols << " " << frame.rows << " " << frame.type() << std::endl;
@@ -174,11 +180,7 @@ PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
     /*std::cout << frameCopy.channels() << " " << frameCopy.cols << " " << frameCopy.rows << " "
               << frameCopy.type() << " " << frameCopy.total() << std::endl;*/
 
-    if (m_interpreter->AllocateTensors() != kTfLiteOk) {
-        m_interpreter.reset();
-        std::cout << "Error allocating tensors" << std::endl;
-        return faces;
-    }
+
 
     float* data = reinterpret_cast<float*>(frameCopy.data);
     float* input_f32 = m_interpreter->typed_input_tensor<float>(0);
@@ -323,7 +325,7 @@ PointsList DetectFacesTflite::operator()(const cv::Mat & frame) {
     return final_faces;
 }
 
-void DetectFacesTflite::generate_anchors() {
+void DetectFacesMediaPipe::generate_anchors() {
     const int num_layers = kInputParameters.at("num_layers");
     const bool interpolated_scale_aspect_ratio = kInputParameters.at("interpolated_scale_aspect_ratio") > 0;
     const int width = kInputParameters.at("input_size_width");
@@ -367,7 +369,7 @@ void DetectFacesTflite::generate_anchors() {
     };
 }
 
-float DetectFacesTflite::iou_score(const cv::Rect& a, const cv::Rect& b) const {
+float DetectFacesMediaPipe::iou_score(const cv::Rect& a, const cv::Rect& b) const {
     float intersection_area = static_cast<float>((a & b).area());
     float union_area = static_cast<float>(a.area() + b.area() - intersection_area);
     return intersection_area / union_area;
