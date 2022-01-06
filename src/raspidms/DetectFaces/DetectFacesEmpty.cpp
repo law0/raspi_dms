@@ -7,11 +7,10 @@ DetectFacesEmpty::DetectFacesEmpty(const std::string & path) : IDetectFaces(path
 
 }
 
-DetectedFacesResult DetectFacesEmpty::operator()(const cv::Mat & frame) {
-    timeMark(m_id);
+PointsList DetectFacesEmpty::operator()(const cv::Mat & frame) {
 
     (void)frame;
-    std::vector<cv::Rect> faces;
+    PointsList faces;
     std::cerr << "Warning: using DetectFacesEmpty" << std::endl;
-    return std::make_pair(faces, timeMark(m_id));
+    return faces;
 }

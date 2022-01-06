@@ -1,6 +1,8 @@
 #ifndef IFACEFEATURES_H
 #define IFACEFEATURES_H
 
+#include "IStage.h"
+
 #include <opencv2/core.hpp>
 #include <opencv2/objdetect.hpp>
 #include <opencv2/opencv.hpp>
@@ -12,9 +14,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-//vector of vector because in case of multiple faces
-typedef std::pair<std::vector<std::vector<cv::Point2i>>, double> FaceFeaturesResult;
 
 class IFaceFeatures {
 public:
@@ -30,7 +29,7 @@ public:
      * - a vector of rectangles of faces (upleft, upright, w, h)
      * - a double : time in second it took for computing
      */
-    virtual FaceFeaturesResult operator()(const cv::Mat & frame,
+    virtual PointsList operator()(const cv::Mat & frame,
                                      std::vector<cv::Rect>& regionOfInterests) = 0;
 
 protected:

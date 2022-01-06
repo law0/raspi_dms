@@ -24,7 +24,7 @@ public:
      * @param period
      * @return the unique id of the function to call in triggerFunc
      */
-    long addFunc(SchedFunc func, int priority = 1);
+    long addFunc(SchedFunc func, double priority = 1.0);
 
     /**
      * @brief triggerFunc, given the right id, called immediately the mapped function,
@@ -50,7 +50,7 @@ public:
 private:
     struct SchedFuncPack {
         SchedFunc func;
-        int priority;
+        double priority;
         double time_acc;
     };
 

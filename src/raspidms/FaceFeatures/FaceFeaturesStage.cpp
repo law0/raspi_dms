@@ -10,8 +10,8 @@ const double AVERAGE_ALPHA = 0.1;
 
 FaceFeaturesStage::FaceFeaturesStage(const std::string& detectorName,
                                      std::shared_ptr<SharedQueue<cv::Mat>> inFrames,
-                                     std::shared_ptr<SharedQueue<DetectedFacesResult>> regionOfInterests,
-                                     std::shared_ptr<SharedQueue<FaceFeaturesResult>> outFaceFeatures)
+                                     std::shared_ptr<SharedQueue<PointsList>> regionOfInterests,
+                                     std::shared_ptr<SharedQueue<PointsList>> outFaceFeatures)
     : m_detectorName(detectorName),
       m_inFrames(inFrames),
       m_regionOfInterests(regionOfInterests),
@@ -27,42 +27,48 @@ void FaceFeaturesStage::operator()(int threadId) {
     std::cout << "FaceFeaturesStage thread id " << threadId << std::endl;
     std::shared_ptr<IFaceFeatures> detector = getNextDetector(threadId);
 
-    //Don't wait for frame, there should be plenty
     cv::Mat frame;
-    if (!m_inFrames->pop_front_no_wait(frame) || frame.empty()) {
+
+    // try pop without emptying
+    if (m_inFrames->size() > 1) {
+        m_inFrames->pop_front_wait(frame);
+    } else {
+        frame = m_inFrames->front_wait();
+    }
+
+    if (frame.empty()) {
         std::cout << "FaceFeaturesStage: " << "empty frame" << std::endl;
         return;
     }
 
-    DetectedFacesResult dfr;
-    if(! m_regionOfInterests->front_no_wait(dfr)) {
-        std::cout << "FaceFeaturesStage: " << "RoI queue empty: " << m_regionOfInterests->size() << std::endl;
-        return;
-    }
+    // Wait for roi
+    PointsList pl_rois = m_regionOfInterests->front_wait();
 
-    if (dfr.first.size() == 0) {
-        std::cout << "FaceFeaturesStage: " << "Void RoI ! This should not happen !" << std::endl;
-
-        // Normally no empty RoI should be pushed into the RoI queue !
-
-        // No need for a void region of interest
-        //m_regionOfInterests->pop_front_no_wait();
-
+    if (pl_rois.size() == 0) {
+        pl_rois = m_lastValidRoi;
     } else {
-
-        // Detect the faces features
-        FaceFeaturesResult ffr = (*detector)(frame, dfr.first);
-
-        // Exponential moving average
-        m_averageTime = m_averageAlpha * ffr.second + (1. - m_averageAlpha) * m_averageTime;
-
-
-        if (ffr.first.size() == 0) {
-            std::cout << "FaceFeaturesStage: " << "No face feature detected" << std::endl;
-        } else {
-            m_outFaceFeatures->push_back(ffr);
-        }
+        m_lastValidRoi = pl_rois;
     }
+
+    std::vector<cv::Rect> rois;
+    for (auto& head : pl_rois) {
+        rois.push_back(cv::Rect(head[0], head[1]));
+    }
+
+    timeMark(threadId);
+    // Detect the faces features
+    PointsList faces_features = (*detector)(frame, rois);
+
+    // Exponential moving average
+    m_averageTime = m_averageAlpha * timeMark(threadId) + (1. - m_averageAlpha) * m_averageTime;
+    std::cout << "FaceFeatureStage average time: " << m_averageTime << std::endl;
+
+    if (faces_features.size() == 0) {
+        std::cout << "FaceFeaturesStage: " << "No face feature detected" << std::endl;
+    } else {
+        m_outFaceFeatures->push_back(faces_features);
+    }
+
 
 
     if (m_outFaceFeatures->size() > MAX_OUT_QUEUE_SIZE)

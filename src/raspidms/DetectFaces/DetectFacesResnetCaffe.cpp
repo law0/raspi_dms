@@ -16,14 +16,13 @@ DetectFacesResnetCaffe::DetectFacesResnetCaffe(const std::string & protoTxtPath,
 
 }
 
-DetectedFacesResult DetectFacesResnetCaffe::operator()(const cv::Mat & frame) {
+PointsList DetectFacesResnetCaffe::operator()(const cv::Mat & frame) {
     // std::cout << "resnetCaffe" << std::endl;
     double confThreshold = 0.5;
-    timeMark(m_id);
-    std::vector<cv::Rect> faces;
+    PointsList faces;
 
     if(frame.empty())
-        return std::make_pair(faces, 0.0);
+        return faces;
 
     cv::Mat frameCopy = frame.clone();
     cv::resize(frame, frameCopy, cv::Size(300, 300));
@@ -54,14 +53,12 @@ DetectedFacesResult DetectFacesResnetCaffe::operator()(const cv::Mat & frame) {
                 top    = (float)(data[i + 4] * frame.rows);
                 right  = (float)(data[i + 5] * frame.cols);
                 bottom = (float)(data[i + 6] * frame.rows);
-                width  = right - left + 1;
-                height = bottom - top + 1;
             }
-            faces.push_back(cv::Rect(left, top, width, height));
+            faces.push_back({cv::Point2f(left, top), cv::Point2f(right, bottom)});
         }
     }
 
     // std::cout << __FUNCTION__ << " ---------------> faces.size() = " << faces.size() << std::endl;
 
-    return std::make_pair(faces, timeMark(m_id));
+    return faces;
 }
