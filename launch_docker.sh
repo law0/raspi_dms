@@ -6,7 +6,8 @@ LOCAL_PWD=$(pwd)
 
 if [ -z "$1" ]
 then
-    docker build -t rasp-cross-compile --build-arg local_pwd=${LOCAL_PWD} .
+    docker build -t rasp-cross-compile --build-arg local_pwd=${LOCAL_PWD} \
+        --build-arg uid=$(id -u) .
 fi
 
 CAMERA_OPTIONS=""
