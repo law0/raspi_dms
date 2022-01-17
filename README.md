@@ -7,6 +7,8 @@
 
 ## To Build and Run locally
 
+![on_PC.gif](img/on_PC.gif)
+
 ### Launch docker
 
 Note: To work with a webcam, you may need to change rights of /dev/video0 first, from outside the docker container,
@@ -45,6 +47,8 @@ LD_LIBRARY_PATH=$(pwd)/../lib:$LD_LIBRARY_PATH ./raspidms -d mediapipe -m mediap
 
 
 ## To Cross Build for Raspberry (Raspbian Bullseye)
+
+![on_rasp.gif](img/on_rasp.gif)
 
 ### Launch docker
 ```sh
