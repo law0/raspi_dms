@@ -287,42 +287,17 @@ PointsList DetectFacesMediaPipe::operator()(const cv::Mat & frame) {
         return faces;
 
     // Eliminate excessive detections
-    PointsList final_faces;
-    final_faces.push_back(faces.back());
-    faces.pop_back();
-
-     if (faces.size() > 0) {
-        // O(n^2), but there shouldn't be much faces anyway (~3 faces max)
-        for (int i = 0; i < faces.size(); ++i) {
-            for (int j = 0; j < final_faces.size(); ++j) {
-                auto a = cv::Rect(faces[i][0], faces[i][1]);
-                auto b = cv::Rect(final_faces[j][0], final_faces[j][1]);
-
-                // If faces overlap much with another
-                if (iou_score(a, b) > 0.6) {
-                    // Then they detect the same face, take the biggest bounding box
-                    if (a.area() > b.area()) {
-                        final_faces[j] = faces[i];
-                    } else {
-                        continue;
-                    }
-                } else {
-                    // If no overlap, it is a new face
-                    final_faces.push_back(faces[i]);
-                }
-            }
-        }
-    }
+    filterSimilarIOU(faces, 0.6);
 
     //std::cout << __FUNCTION__ << " final_faces.size() = " << final_faces.size() << std::endl;
-    /*for (auto vec : final_faces) {
+    for (auto vec : faces) {
         std::cout << "head (" << vec[0] << ", " << vec[1] << ")" << std::endl
                   << "r eye, l eye, nose, mouth, r ear, l ear ("
                   << vec[2] << ", " << vec[3] << ", " << vec[4] << ", " << vec[5]
                   << vec[6] << ", " << vec[7] << ")" << std::endl;
-    }*/
+    }
 
-    return final_faces;
+    return faces;
 }
 
 void DetectFacesMediaPipe::generate_anchors() {
@@ -369,8 +344,36 @@ void DetectFacesMediaPipe::generate_anchors() {
     };
 }
 
-float DetectFacesMediaPipe::iou_score(const cv::Rect& a, const cv::Rect& b) const {
-    float intersection_area = static_cast<float>((a & b).area());
-    float union_area = static_cast<float>(a.area() + b.area() - intersection_area);
-    return intersection_area / union_area;
+void DetectFacesMediaPipe::filterSimilarIOU(PointsList& faces, float threshold) const {
+    int first = 0;
+    int last = faces.size() - 1;
+
+    while (first < last) {
+        auto first_rect = cv::Rect(faces[first][0], faces[first][1]);
+        std::vector<cv::Point2f> max_bd_box = faces[first];
+
+        for (int i = first + 1; i <= last; ++i) {
+            auto candidate_rect = cv::Rect(faces[i][0], faces[i][1]);
+
+            // If a face overlaps enough with another then they detect the same face
+            // Using a while loop because swap of faces[i] and faces[last] may bring a new overlapping face
+            while (iou_score(first_rect, candidate_rect) > threshold && i <= last) {
+
+                // save the biggest bounding box
+                if (cv::Rect(max_bd_box[0], max_bd_box[1]).area() < candidate_rect.area())
+                    max_bd_box = faces[i];
+
+                // Discard the similar bounding box
+                std::swap(faces[i], faces[last]);
+                candidate_rect = cv::Rect(faces[i][0], faces[i][1]);
+                last--;
+            }
+        }
+
+        //put the biggest bounding box back
+        faces[first] = max_bd_box;
+        first++;
+    }
+
+    faces.erase(faces.begin() + last + 1, faces.end());
 }

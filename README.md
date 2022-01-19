@@ -39,7 +39,7 @@ TARGET=local ./build.sh -j8
 ### Run
 ```
 #Still inside docker container
-cd out/local/final/raspidms/bin
+cd out/local/final/bin
 LD_LIBRARY_PATH=$(pwd)/../lib:$LD_LIBRARY_PATH ./raspidms -d mediapipe -m mediapipe 0
 
 ```

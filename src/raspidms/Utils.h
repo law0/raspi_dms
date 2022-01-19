@@ -61,4 +61,16 @@ inline dlib::rectangle openCVRectangleToDlib(const cv::Rect & r)
     return dlib::rectangle((long)r.tl().x, (long)r.tl().y, (long)r.br().x - 1, (long)r.br().y - 1);
 }
 
+/**
+ * @brief iou_score
+ * @param a
+ * @param b
+ * @return IoU (intersection over union) score between two rectangles. 1.0 if full overlap, 0.0 if no overlap.
+ */
+inline float iou_score(const cv::Rect& a, const cv::Rect& b) {
+    float intersection_area = static_cast<float>((a & b).area());
+    float union_area = static_cast<float>(a.area() + b.area() - intersection_area);
+    return intersection_area / union_area;
+}
+
 #endif // UTILS_H
